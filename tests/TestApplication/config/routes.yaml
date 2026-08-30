@@ -1,0 +1,5 @@
+bitexpert_sylius_wishlist_concierge_plugin_admin:
+    resource: "@BitExpertSyliusWishlistConciergePlugin/config/routes/admin.yaml"
+
+bitexpert_sylius_wishlist_concierge_plugin_shop:
+    resource: "@BitExpertSyliusWishlistConciergePlugin/config/routes/shop.yaml"
