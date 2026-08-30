@@ -11,13 +11,13 @@ doctrine_migrations:
         'BitExpertSyliusWishlistConciergePlugin': '%kernel.project_dir%/../../../src/Migrations'
 
 # Remove if you do not need to extend entities
-doctrine:
-    orm:
-        entity_managers:
-            default:
-                mappings:
-                    TestApplication:
-                        is_bundle: false
-                        type: attribute
-                        dir: '%kernel.project_dir%/../../../tests/TestApplication/src/Entity'
-                        prefix: Tests\Acme\SyliusExamplePlugin
+# doctrine:
+#     orm:
+#         entity_managers:
+#             default:
+#                 mappings:
+#                     TestApplication:
+#                         is_bundle: false
+#                         type: attribute
+#                         dir: '%kernel.project_dir%/../../../tests/TestApplication/src/Entity'
+#                         prefix: Tests\BitExpert\SyliusWishlistConciergePlugin

@@ -1,0 +1,216 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BitExpert\SyliusWishlistConciergePlugin\Service;
+
+use Sylius\Component\Channel\Context\ChannelContextInterface;
+use Sylius\Component\Channel\Repository\ChannelRepositoryInterface;
+use Sylius\Component\Core\Model\ChannelInterface;
+use Sylius\Component\Core\Model\ProductInterface;
+use Sylius\Component\Core\Repository\ProductRepositoryInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+final readonly class ThemedProductFinder
+{
+    private const int DEFAULT_LIMIT = 12;
+    private const string TAGS_ATTRIBUTE_CODE = 'concierge_tags';
+
+    public function __construct(
+        private ProductRepositoryInterface $productRepository,
+        private ChannelRepositoryInterface $channelRepository,
+        private ChannelContextInterface $channelContext,
+    ) {
+    }
+
+    /**
+     * @return array<int, array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}>
+     */
+    public function find(?string $theme, ?string $channelCode, ?int $priceMin, ?int $priceMax, ?array $taxonCodes, int $limit = self::DEFAULT_LIMIT): array
+    {
+        $channel = $this->resolveChannel($channelCode);
+        $localeCode = $channel->getDefaultLocale()?->getCode() ?? 'en_US';
+
+        $products = $this->findEnabledProductsForChannel($channel, $taxonCodes);
+
+        $results = $this->filterAndMap($products, $channel, $localeCode, $theme, $priceMin, $priceMax, $limit);
+
+        if ([] === $results && null !== $theme) {
+            $results = $this->fallback($channel, $localeCode, $limit);
+        }
+
+        return $results;
+    }
+
+    /**
+     * @return ProductInterface[]
+     */
+    private function findEnabledProductsForChannel(ChannelInterface $channel, ?array $taxonCodes): array
+    {
+        $qb = $this->productRepository->createQueryBuilder('p')
+            ->innerJoin('p.channels', 'ch')
+            ->andWhere('p.enabled = :enabled')
+            ->andWhere('ch.code = :channelCode')
+            ->setParameter('enabled', true)
+            ->setParameter('channelCode', $channel->getCode());
+
+        if (null !== $taxonCodes && [] !== $taxonCodes) {
+            $qb->innerJoin('p.productTaxons', 'pt')
+                ->innerJoin('pt.taxon', 't')
+                ->andWhere('t.code IN (:taxonCodes)')
+                ->setParameter('taxonCodes', $taxonCodes);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param ProductInterface[] $products
+     * @return array<int, array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}>
+     */
+    private function filterAndMap(array $products, ChannelInterface $channel, string $localeCode, ?string $theme, ?int $priceMin, ?int $priceMax, int $limit): array
+    {
+        $results = [];
+        foreach ($products as $product) {
+            if (null !== $theme && !$this->matchesTheme($product, $theme, $localeCode)) {
+                continue;
+            }
+
+            $mapped = $this->mapProduct($product, $channel, $localeCode);
+            if (null === $mapped) {
+                continue;
+            }
+
+            if (null !== $priceMin && $mapped['price'] < $priceMin) {
+                continue;
+            }
+            if (null !== $priceMax && $mapped['price'] > $priceMax) {
+                continue;
+            }
+
+            $results[] = $mapped;
+
+            if (count($results) >= $limit) {
+                break;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * @return array<int, array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}>
+     */
+    private function fallback(ChannelInterface $channel, string $localeCode, int $limit): array
+    {
+        $products = $this->findEnabledProductsForChannel($channel, null);
+        $results = [];
+        foreach ($products as $product) {
+            $mapped = $this->mapProduct($product, $channel, $localeCode);
+            if (null === $mapped) {
+                continue;
+            }
+            $results[] = $mapped;
+            if (count($results) >= $limit) {
+                break;
+            }
+        }
+        return $results;
+    }
+
+    private function matchesTheme(ProductInterface $product, string $theme, string $localeCode): bool
+    {
+        $lowerTheme = strtolower($theme);
+
+        // Hard match: concierge_tags attribute (multi-select: one row per tag)
+        foreach ($product->getAttributes() as $av) {
+            if ($av->getAttribute()?->getCode() !== self::TAGS_ATTRIBUTE_CODE) {
+                continue;
+            }
+            $tags = is_string($av->getValue())
+                ? explode(',', $av->getValue())
+                : [(string) $av->getValue()];
+            foreach ($tags as $tag) {
+                if ($lowerTheme === strtolower(trim($tag))) {
+                    return true;
+                }
+            }
+        }
+
+        // Soft match: name contains
+        $name = (string) $product->getTranslation($localeCode)?->getName();
+        if ('' !== $name && str_contains(strtolower($name), $lowerTheme)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}|null
+     */
+    private function mapProduct(ProductInterface $product, ChannelInterface $channel, string $localeCode): ?array
+    {
+        $variant = $product->getEnabledVariants()->first();
+        if (false === $variant) {
+            $variant = $product->getVariants()->first();
+        }
+        if (false === $variant || null === $variant) {
+            return null;
+        }
+
+        $channelPricing = $variant->getChannelPricingForChannel($channel);
+        if (null === $channelPricing) {
+            return null;
+        }
+
+        $price = $channelPricing->getPrice() ?? 0;
+        $original = $channelPricing->getOriginalPrice() ?? $price;
+
+        return [
+            'code' => (string) $product->getCode(),
+            'name' => (string) $product->getTranslation($localeCode)?->getName(),
+            'slug' => (string) $product->getTranslation($localeCode)?->getSlug(),
+            'price' => $price,
+            'originalPrice' => $original,
+            'taxonCodes' => $this->getTaxonCodes($product),
+            'image' => $this->getImage($product),
+            'variantCode' => (string) $variant->getCode(),
+        ];
+    }
+
+    private function resolveChannel(?string $code): ChannelInterface
+    {
+        if (null !== $code) {
+            $channel = $this->channelRepository->findOneBy(['code' => $code]);
+            if (null === $channel) {
+                throw new NotFoundHttpException(sprintf('Channel "%s" not found.', $code));
+            }
+            return $channel;
+        }
+
+        return $this->channelContext->getChannel();
+    }
+
+    /** @return string[] */
+    private function getTaxonCodes(ProductInterface $product): array
+    {
+        $codes = [];
+        foreach ($product->getProductTaxons() as $pt) {
+            $code = $pt->getTaxon()?->getCode();
+            if (null !== $code) {
+                $codes[] = $code;
+            }
+        }
+        return $codes;
+    }
+
+    private function getImage(ProductInterface $product): ?string
+    {
+        $image = $product->getImages()->first();
+        if (false === $image) {
+            return null;
+        }
+        return $image->getPath();
+    }
+}

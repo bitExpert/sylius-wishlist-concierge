@@ -1,0 +1,9 @@
+bitexpert_wishlist_concierge:
+    shop:
+        status:
+            label: 'Gift Concierge ready — ask your agent to curate a themed wishlist'
+            webmcp: 'WebMCP:'
+            checking: 'checking…'
+            ready: '%count% tools ready'
+            error: 'Registration failed'
+            unavailable: 'WebMCP unavailable — enable flag'

@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BitExpert\SyliusWishlistConciergePlugin\Security;
+
+use Sylius\Component\Core\Model\ShopUserInterface;
+use Sylius\WishlistPlugin\Entity\WishlistInterface;
+use Sylius\WishlistPlugin\Resolver\WishlistCookieTokenResolverInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+final readonly class WishlistAccessChecker
+{
+    public function __construct(
+        private Security $security,
+        private WishlistCookieTokenResolverInterface $cookieTokenResolver,
+    ) {
+    }
+
+    public function assertCanView(WishlistInterface $wishlist): void
+    {
+        $user = $this->security->getUser();
+
+        // Owned wishlist — only owner may view
+        if (null !== $wishlist->getShopUser()) {
+            if (!$user instanceof ShopUserInterface) {
+                throw new AccessDeniedHttpException('Authentication required to view this wishlist.');
+            }
+            if ($wishlist->getShopUser()->getId() !== $user->getId()) {
+                throw new AccessDeniedHttpException('You do not own this wishlist.');
+            }
+            return;
+        }
+
+        // Anonymous wishlist — for gift concierge, wishlists are shareable via ID/token
+        // Allow access for any anon (contest demo requires shareable gift registries).
+        // For stricter privacy, uncomment token check below:
+        // $cookieToken = $this->cookieTokenResolver->resolve();
+        // if ($wishlist->getToken() !== $cookieToken) {
+        //     throw new AccessDeniedHttpException('Wishlist token does not match your session.');
+        // }
+    }
+
+    public function assertCanModify(WishlistInterface $wishlist): void
+    {
+        // Same policy for modify as view for this plugin
+        $this->assertCanView($wishlist);
+    }
+}

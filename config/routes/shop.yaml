@@ -1,1 +1,8 @@
-# Define your own shop routes here
+bitexpert_concierge:
+    resource: "@BitExpertSyliusWishlistConciergePlugin/src/Controller/Shop/"
+    type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: en_US|de_DE|fr_FR
+    defaults:
+        _locale: en_US

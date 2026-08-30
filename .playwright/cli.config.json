@@ -1,0 +1,14 @@
+{
+  "ignoreHTTPSErrors": true,
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "channel": "chrome",
+      "args": [
+        "--enable-features=WebMCP",
+        "--ignore-certificate-errors",
+        "--unsafely-treat-insecure-origin-as-secure=http://wishlist-concierge.ddev.site,https://wishlist-concierge.ddev.site"
+      ]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+parameters:
+    # Theme tag values are managed in the database via the `concierge_tags`
+    # product attribute (type: selection, multiple: true).
+    # Populate with: php bin/console bitexpert:wishlist-concierge:setup-tags

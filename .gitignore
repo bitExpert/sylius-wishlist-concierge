@@ -3,6 +3,7 @@
 /node_modules/
 /drivers/
 /composer.lock
+.playwright-cli
 
 /etc/build/*
 !/etc/build/.gitignore

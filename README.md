@@ -1,129 +1,362 @@
+# Wishlist Concierge — Sylius WebMCP
+
 <p align="center">
-    <a href="https://sylius.com" target="_blank">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://media.sylius.com/sylius-logo-800-dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://media.sylius.com/sylius-logo-800.png">
-          <img alt="Sylius Logo." src="https://media.sylius.com/sylius-logo-800.png">
-        </picture>
-    </a>
+  <a href="https://sylius.com" target="_blank"><img alt="Sylius" src="https://media.sylius.com/sylius-logo-800.png" width="180"></a>
 </p>
 
-<h1 align="center">Plugin Skeleton</h1>
+<p align="center">
+  <a href="https://sylius.com"><img alt="Sylius 2" src="https://img.shields.io/badge/Sylius-2.0-1ab150"></a>
+  <a href="https://github.com/Sylius/WishlistPlugin"><img alt="WishlistPlugin" src="https://img.shields.io/badge/WishlistPlugin-1.3-blue"></a>
+  <a href="https://webmachinelearning.github.io/webmcp/"><img alt="WebMCP" src="https://img.shields.io/badge/WebMCP-Chrome%20149%2B%20%7C%20ChatGPT%20in--app-orange"></a>
+  <a href="https://ddev.com"><img alt="DDEV" src="https://img.shields.io/badge/DDEV-wishlist--concierge.ddev.site-93c93e"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
 
-<p align="center">Skeleton for starting Sylius plugins.</p>
+**Agent + human co-curate themed, budget-aware gift registries on Sylius.** Instead of clicking 30 filters, you tell your agent *“dino birthday for 8yo, $150”* — it searches taxons, builds a wishlist, optimizes for budget with Sylius `ChannelPricing`, and moves the best fit to cart after your confirm.
 
-## Documentation
+**Demo (live):** `https://wishlist-concierge.ddev.site/en_US/` · **Video:** `<!-- TODO: <3 min YouTube public link required by webmcp.devpost.com/rules -->` · **Devpost:** `https://webmcp.devpost.com` · **Spec:** `https://webmachinelearning.github.io/webmcp/`
 
-For a comprehensive guide on Sylius Plugins development please go to Sylius documentation,
-there you will find the <a href="https://docs.sylius.com/plugins-development-guide/how-to-create-a-plugin-for-sylius">Plugin Development Guide</a> - it's a great place to start.
+> **Contest snippet required by judges** — this repo contains `document.modelContext.registerTool` (see `assets/shop/webmcp/registry.js:37`):
+> ```js
+> await document.modelContext.registerTool({
+>   name: "wishlist.create_themed",
+>   description: "Create a new themed wishlist for FASHION_WEB",
+>   inputSchema: { type: "object", properties: { name:{type:"string"}, theme:{type:"string"}, channelCode:{type:"string", default:"FASHION_WEB"} }, required:["name","theme"] },
+>   execute: async (input) => fetch(`/en_US/concierge/wishlist`, {method:"POST", body: JSON.stringify(input)}).then(r=>r.json()).then(j=>JSON.stringify(j,null,2))
+> });
+> ```
 
-For more information about the **Test Application** included in the skeleton, please refer to the [Sylius documentation](https://docs.sylius.com/plugins-development-guide/test-application).
+---
 
-## Quickstart Installation
+## Why WebMCP?
 
-Run `composer create-project sylius/plugin-skeleton ProjectName`.
+| Actuation (DOM scraping) | WebMCP tool (structured) |
+|---|---|
+| Agent guesses `button[type=submit]` meaning, scrapes `div.price`, hallucinates variant codes | Website **declares** purpose: `product.search_themed`, `wishlist.optimize_for_budget` with JSON Schema; agent calls `variantCode:"Ethereal_Drift_T_Shirt-variant-0"` deterministically |
+| 15 steps, each open to interpretation | 1 contract per capability; shared `Channel`/`Locale` state |
+| Brittle on theme change | Progressive enhancement — works without WebMCP, better *with* |
 
-### Traditional
+Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an MCP server in client-side JS. Implementations: `assets/shop/webmcp/registry.js:30` `registerAll()` registers 8 imperative tools with `readOnlyHint` vs human-confirm on money.
 
-1. From the plugin skeleton root directory, run the following commands:
+**Why this is a strong fit:** Gift curation is *combinatorial* (taxon + price + channel + budget) + *subjective* (human taste). Agent does math, human does taste — the classic “better together” the challenge asks for.
 
-    ```bash
-    (cd vendor/sylius/test-application && yarn install)
-    (cd vendor/sylius/test-application && yarn build)
-    vendor/bin/console assets:install
-   
-    vendor/bin/console doctrine:database:create
-    vendor/bin/console doctrine:migrations:migrate -n
-    # Optionally load data fixtures
-    vendor/bin/console sylius:fixtures:load -n
-    ```
+## What People + Agents Can Do Together
 
-To be able to set up a plugin's database, remember to configure your database credentials in `tests/TestApplication/.env` and `tests/TestApplication/.env.test`.
+**Before:** 30 filter clicks, manual budget math `7589+1703+...`, missed `CatalogPromotion`, abandoned cart. **After:** one conversation.
 
-2. Run your local server:
+**Story 1 — Themed gift**
+> User: “birthday / dinosaur for my nephew”
+> Agent: `product.search_themed {theme:"dinosaur"}` → maps via `config/packages/bitexpert_wishlist_concierge.yaml:2` `dino→[t_shirts,caps]` → `ThemedProductFinder.php:66` channel-scoped QB (`JOIN p.channels`, `JOIN t.code`) → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
 
-      ```bash
-      symfony server:ca:install
-      symfony server:start -d
-      ```
+**Story 2 — Budget**
+> Agent: `wishlist.optimize_for_budget {wishlistId:2, budgetCents:15000}` → `BudgetOptimizer.php:25` cheapest-first knapsack with `quantity * ChannelPricing` → `chosen:["Lunar_Echo_T_Shirt-variant-0"], total $17.03, $7 remaining` + explanation string. Human decides to increase budget.
 
-3. Open your browser and navigate to `https://localhost:8000`.
+**Story 3 — Share & Checkout**
+> `wishlist.move_to_cart {wishlistId:2}` → `CartTransferController.php:21` triggers `window.confirm("Move 1 item ($17.03) to cart?")` at `registry.js:196` (spec Mitigation 6.3.2 — agent cannot finalize without human). `OrderFactory` + `OrderProcessor` → `cartToken` + `/en_US/cart`. Anon allowed (`FASHION_WEB` gift registries are shareable via `WishlistAccessChecker.php:21` — owned lists still `403`).
 
-### Docker
+## 90-Second Demo (no screenshots, copy-paste)
 
-1. Execute `make init` to initialize the container and install the dependencies.
+**Prereq:** Chrome 149+ `chrome://flags/#enable-webmcp-testing` → Enabled + relaunch, *or* ChatGPT desktop → in-app browser (WebMCP on by default). Install **Model Context Tool Inspector** extension to see tools.
 
-2. Execute `make database-init` to create the database and run migrations.
+**Agent prompts (Inspector or `document.modelContext` console):**
+```
+wishlist.create_themed {"name":"Dino Birthday — $150","theme":"dinosaur"}
+product.search_themed {"theme":"dinosaur","limit":4}
+wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
+wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
+wishlist.move_to_cart {"wishlistId":2}
+```
 
-3. (Optional) Execute `make load-fixtures` to load the fixtures.
+**curl fallback (proves execution without browser):**
+```bash
+curl -s "https://wishlist-concierge.ddev.site/en_US/concierge/products/search?theme=gift&limit=2" | python3 -m json.tool
+# → {"channelCode":"FASHION_WEB","count":2,"products":[{"code":"...","variantCode":"...","price":7589}]}
 
-4. Your app is available at `http://localhost`.
+cat > /tmp/new.json <<JSON
+{"name":"Test Validate — birthday","theme":"birthday","channelCode":"FASHION_WEB"}
+JSON
+curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist -H "Content-Type: application/json" -d @/tmp/new.json | python3 -m json.tool
+# → {"wishlist":{"id":2,"token":"...","name":"Test Validate — birthday",...}}
 
-## Usage
+# Validation demo (DTO S  at src/Dto/*.php):
+cat > /tmp/bad.json <<JSON
+{"name":"","theme":""}
+JSON
+curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist -H "Content-Type: application/json" -d @/tmp/bad.json | python3 -m json.tool
+# → {"error":"Validation failed","violations":[{"property":"name","message":"Wishlist name must not be blank."}]}
 
-### Running plugin tests
+# Channel validation (ThemedProductFinder.php:151 throws NotFoundHttpException → JSON 404 at ProductSearchController.php:62):
+curl -s "https://wishlist-concierge.ddev.site/en_US/concierge/products/search?theme=gift&channelCode=FOOBAR" | python3 -m json.tool
+# → {"error":"Channel \"FOOBAR\" not found. Available: FASHION_WEB"}
 
-  - PHPUnit
+# Optimize & cart (quantity-aware at BudgetOptimizer.php:42):
+cat > /tmp/opt.json <<JSON
+{"budgetCents":8000}
+JSON
+curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist/2/optimize -H "Content-Type: application/json" -d @/tmp/opt.json | python3 -m json.tool
+curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist/2/move-to-cart -H "Content-Type: application/json" -d "{}" | python3 -m json.tool
+# → {"cartToken":"...","total":16418,"cartUrl":"/en_US/cart"}
+```
 
-    ```bash
-    vendor/bin/phpunit
-    ```
+## Architecture
 
-  - Behat (non-JS scenarios)
+```mermaid
+graph TD
+  Shop[Shop Twig Hook sylius_shop.base.footer.content<br/>templates/shop/webmcp/status.html.twig]
+  Shop -->|encore_entry| Entry[assets/shop/entrypoint.js<br/>plugin-shop-entry.js]
+  Entry --> Registry[assets/shop/webmcp/registry.js<br/>registerAll() → 8× document.modelContext.registerTool]
+  Registry -->|fetch /en_US/concierge/*| Ctrl{Controller Shop}
+  Ctrl --> PS[ProductSearchController.php<br/>GET /products/search]
+  Ctrl --> WL[WishlistController.php<br/>POST /wishlist, GET /wishlist/{id}, POST /wishlist/{id}/items, POST /wishlist/{id}/optimize]
+  Ctrl --> CT[CartTransferController.php<br/>POST /wishlist/{id}/move-to-cart]
+  PS --> TF[ThemedProductFinder.php<br/>QB innerJoin p.channels ch<br/>innerJoin t.code IN (:taxonCodes)]
+  WL --> WM[WishlistManager.php<br/>sylius_wishlist_plugin.factory.wishlist]
+  WL --> BO[BudgetOptimizer.php<br/>quantity * ChannelPricing knapsack]
+  CT --> OF[Factory sylius.factory.order<br/>+ order_processing.order_processor]
+  TF --> Prod[(Sylius Product<br/>ChannelPricing / Taxon)]
+  WM --> WLDB[(WishlistPlugin<br/>Wishlist / WishlistProduct)]
+  OF --> Cart[(Order<br/>Token)]
+```
 
-    ```bash
-    vendor/bin/behat --strict --tags="~@javascript&&~@mink:chromedriver"
-    ```
+**Folder map**
 
-  - Behat (JS scenarios)
- 
-    1. [Install Symfony CLI command](https://symfony.com/download).
- 
-    2. Start Headless Chrome:
-    
-      ```bash
-      google-chrome-stable --enable-automation --disable-background-networking --no-default-browser-check --no-first-run --disable-popup-blocking --disable-default-apps --allow-insecure-localhost --disable-translate --disable-extensions --no-sandbox --enable-features=Metal --headless --remote-debugging-port=9222 --window-size=2880,1800 --proxy-server='direct://' --proxy-bypass-list='*' http://127.0.0.1
-      ```
-    
-    3. Install SSL certificates (only once needed) and run test application's webserver on `127.0.0.1:8080`:
-    
-      ```bash
-      symfony server:ca:install
-      APP_ENV=test symfony server:start --port=8080 --daemon
-      ```
-    
-    4. Run Behat:
-    
-      ```bash
-      vendor/bin/behat --strict --tags="@javascript,@mink:chromedriver"
-      ```
-    
-  - Static Analysis
-      
-    - PHPStan
-    
-      ```bash
-      vendor/bin/phpstan analyse -c phpstan.neon -l max src/  
-      ```
+```
+config/packages/bitexpert_wishlist_concierge.yaml  → themes param
+config/services/webmcp.yaml                         → services private:true, controllers public:true
+config/twig_hooks/shop.yaml                         → sylius_shop.base.footer.content badge
+src/Dto/* (5)                                       → #[Assert] validation
+src/Security/WishlistAccessChecker.php              → shareable anon vs owned 403
+src/Service/ThemedProductFinder.php                 → channel-scoped QB, mapProduct()
+src/Service/BudgetOptimizer.php                     → int cents + quantity
+templates/shop/webmcp/status.html.twig              → {{ 'bitexpert_wishlist_concierge.shop.status.label'|trans }}
+translations/messages.en.yaml                       → EN keys
+tests/Unit/Service/BudgetOptimizerTest.php          → 3 cases, phpunit
+assets/shop/webmcp/registry.js                      → Promise.allSettled race fix
+```
 
-  - Coding Standard
-  
-    ```bash
-    vendor/bin/ecs check
-    ```
+## WebMCP Tool Reference — Full JSON Schema Inline
 
-### Opening Sylius with your plugin
+All tools are imperative at `assets/shop/webmcp/registry.js:37` via `document.modelContext.registerTool(tool, {signal})`. `name` regex `^[A-Za-z0-9_.-]{1,128}$`.
 
-- Using `test` environment:
+### `wishlist.list` — `readOnlyHint:true`
+List recent wishlists for `FASHION_WEB`.
+```json
+{
+  "name": "wishlist.list",
+  "description": "List recent wishlists for the current channel (FASHION_WEB, en_US). Use to discover existing wishlists before creating a new themed one.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "channelCode": { "type": "string", "description": "Channel code, defaults to FASHION_WEB", "default": "FASHION_WEB" }
+    }
+  },
+  "execute": "GET /en_US/concierge/wishlist → {wishlists:[{id,token,name,channelCode,items}], channelCode}"
+}
+```
 
-    ```bash
-    APP_ENV=test vendor/bin/console sylius:fixtures:load -n
-    APP_ENV=test symfony server:start -d
-    ```
-    
-- Using `dev` environment:
+### `wishlist.get` — `readOnlyHint:true`
+```json
+{
+  "name": "wishlist.get",
+  "description": "Get details of a single wishlist by id, including items with variantCode, productName, price and quantities.",
+  "inputSchema": {
+    "type": "object",
+    "properties": { "wishlistId": { "type": "integer", "description": "Wishlist id" } },
+    "required": ["wishlistId"]
+  },
+  "execute": "GET /en_US/concierge/wishlist/{id} → {wishlist:{id,token,name,items:[{wishlistProductId,variantCode,productCode,productName,quantity,price,originalPrice}]}}"
+}
+```
 
-    ```bash
-    vendor/bin/console sylius:fixtures:load -n
-    symfony server:start -d
-    ```
+### `wishlist.create_themed`
+```json
+{
+  "name": "wishlist.create_themed",
+  "description": "Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Dino Birthday — $150\".",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "description": "Wishlist name, e.g. Dino Birthday — $150" },
+      "theme": { "type": "string", "description": "Theme keyword: birthday, dinosaur, gift, summer, etc." },
+      "channelCode": { "type": "string", "default": "FASHION_WEB" }
+    },
+    "required": ["name","theme"]
+  },
+  "constraints": "WishlistCreateRequest.php #[Assert\\NotBlank, Length(max:100), Regex ^[\\pL\\pN\\s\\-_]+$]",
+  "execute": "POST /en_US/concierge/wishlist {name,theme,channelCode} → 201 {wishlist} | 422 {violations}"
+}
+```
+
+### `product.search_themed` — `readOnlyHint:true`
+```json
+{
+  "name": "product.search_themed",
+  "description": "Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Theme is mapped to taxons (e.g. dinosaur -> t_shirts/caps).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "theme": { "type": "string", "description": "Theme keyword" },
+      "taxonCodes": { "type": "array", "items": { "type": "string" }, "description": "Optional taxon filter e.g. [\"t_shirts\",\"caps\"]" },
+      "priceMinCents": { "type": "integer", "description": "Min price cents" },
+      "priceMaxCents": { "type": "integer", "description": "Max price cents" },
+      "limit": { "type": "integer", "default": 12, "minimum": 1, "maximum": 50 },
+      "channelCode": { "type": "string", "default": "FASHION_WEB" }
+    },
+    "required": ["theme"]
+  },
+  "execute": "GET /en_US/concierge/products/search?theme=&taxonCodes[]=&priceMin=&priceMax=&limit= → {count, products:[{code,name,slug,price,originalPrice,taxonCodes,image,variantCode}]} | 404 {error:\"Channel not found\"} | 422 priceMin>priceMax"
+}
+```
+
+### `product.get_details` — `readOnlyHint:true`
+```json
+{
+  "name": "product.get_details",
+  "description": "Get product details by productCode for FASHION_WEB including variants and pricing.",
+  "inputSchema": {
+    "type": "object",
+    "properties": { "productCode": { "type": "string" } },
+    "required": ["productCode"]
+  },
+  "execute": "GET /api/v2/shop/products/{code}?channelCode=FASHION_WEB (Accept: application/ld+json)"
+}
+```
+
+### `wishlist.add_item`
+```json
+{
+  "name": "wishlist.add_item",
+  "description": "Add a product variant to a wishlist by variantCode and quantity.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "wishlistId": { "type": "integer" },
+      "variantCode": { "type": "string", "description": "Variant code like T_SHIRT_VARIANT", "pattern": "^[A-Za-z0-9._-]+$" },
+      "quantity": { "type": "integer", "default": 1, "minimum": 1, "maximum": 99 }
+    },
+    "required": ["wishlistId","variantCode"]
+  },
+  "execute": "POST /en_US/concierge/wishlist/{id}/items {variantCode,quantity} → {wishlist} | 422 Invalid variant code format | 400 Variant not found | 403 token mismatch"
+}
+```
+
+### `wishlist.optimize_for_budget` — `readOnlyHint:true`
+```json
+{
+  "name": "wishlist.optimize_for_budget",
+  "description": "Optimize a wishlist for a budget (cents, USD). Returns chosen variantCodes, totalCents/savedCents and human explanation. Use before move_to_cart to stay under budget.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "wishlistId": { "type": "integer" },
+      "budgetCents": { "type": "integer", "description": "Budget in cents, e.g. 15000 for $150", "minimum": 1, "maximum": 10000000 },
+      "includePromotions": { "type": "boolean", "default": true }
+    },
+    "required": ["wishlistId","budgetCents"]
+  },
+  "execute": "POST /en_US/concierge/wishlist/{id}/optimize {budgetCents} → {wishlistId,budgetCents,budgetFormatted,chosen:[variantCode],totalCents,totalOriginal,savedCents,totalFormatted,savedFormatted,explanation}"
+}
+```
+
+### `wishlist.move_to_cart`
+```json
+{
+  "name": "wishlist.move_to_cart",
+  "description": "Move wishlist items to cart (anon allowed). Requires human confirmation — the tool will show a confirm dialog in the page before proceeding. Optionally pass variantCodes to move subset, else all.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "wishlistId": { "type": "integer" },
+      "variantCodes": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }, "description": "Subset to move, omit for all" }
+    },
+    "required": ["wishlistId"]
+  },
+  "execute": "GET /wishlist/{id} preview → window.confirm(\"Move N items ($X) to cart?\") → POST /en_US/concierge/wishlist/{id}/move-to-cart {variantCodes} → 201 {cartToken,channelCode,items:[{variantCode,quantity,unitPrice,total}],total,totalFormatted,cartUrl:\"/en_US/cart\"} | {canceled:true} if declined | AbortSignal respected"
+}
+```
+
+## Installation — Plugin Skeleton (Test Application)
+
+**This is a Sylius plugin, not a Sylius project.** The host app is `vendor/sylius/test-application` (Symfony kernel `Sylius\TestApplication\Kernel`). See `docs.sylius.com/plugins-development-guide/test-application`.
+
+```bash
+composer require bitexpert/sylius-wishlist-concierge-plugin
+```
+
+**For this repo (DDEV):**
+
+1. `ddev start` → `https://wishlist-concierge.ddev.site` (docroot `vendor/sylius/test-application/public`, `php 8.4`, `mariadb 11.8`, `nodejs 24` at `.ddev/config.yaml:3`)
+2. Hook installed via `tests/TestApplication/config/bundles.php:4` (`SyliusWishlistPlugin`, `BitExpertSyliusWishlistConciergePlugin`) + `tests/TestApplication/.env` `SYLIUS_TEST_APP_*` (`@BitExpertSyliusWishlistConciergePlugin/config/config.yaml` etc.)
+3. DB:
+   ```bash
+   ddev exec vendor/bin/console doctrine:database:create --if-not-exists
+   ddev exec vendor/bin/console doctrine:migrations:migrate -n
+   ddev exec vendor/bin/console sylius:fixtures:load -n   # FASHION_WEB + standard t_shirts/caps/mugs/dresses/jeans
+   ```
+4. Assets (`webpack.config.js:24` `plugin-shop-entry` → `assets/shop/entrypoint.js:1` → `assets/shop/webmcp/registry.js:30`):
+   ```bash
+   ddev exec bash -c "cd vendor/sylius/test-application && yarn build"
+   # → public/build/app/shop/plugin-shop-entry.*.js (now 87.5 KiB)
+   ```
+5. Open `https://wishlist-concierge.ddev.site/en_US/` → footer badge `WebMCP: 8 tools ready` (via `templates/shop/webmcp/status.html.twig:1` hook `sylius_shop.base.footer.content`).
+
+**Traditional (no DDEV):**
+```bash
+(cd vendor/sylius/test-application && yarn install && yarn build) && vendor/bin/console assets:install
+symfony server:start -d  # https://localhost:8000
+```
+
+## Testing
+
+**Unit — quantity-aware optimizer** `tests/Unit/Service/BudgetOptimizerTest.php:15` (3 cases, no DB):
+
+```bash
+ddev exec vendor/bin/phpunit tests/Unit/Service/BudgetOptimizerTest.php --testdox
+# ✔ Optimize selects cheapest within budget | ✔ Budget too low → [] | ✔ Handles quantity (3×1000+ promotion)
+```
+
+**Playwright CLI** (you have `microsoft/playwright-cli` via `npm install -g @playwright/cli`):
+```bash
+playwright-cli -s=wishlist open https://wishlist-concierge.ddev.site/en_US/ --ignore-https-errors
+playwright-cli -s=wishlist eval "await document.modelContext.getTools().then(t=>t.map(x=>x.name))"
+# → ["wishlist.list","wishlist.get","wishlist.create_themed","product.search_themed","product.get_details","wishlist.add_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
+playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search_themed'),{theme:'gift',limit:2})"
+```
+
+**Style:**
+```bash
+ddev exec vendor/bin/ecs check src
+ddev exec vendor/bin/console lint:twig templates/shop/webmcp/
+```
+
+## Configuration
+
+```yaml
+# config/packages/bitexpert_wishlist_concierge.yaml
+parameters:
+  bitexpert_wishlist_concierge.themes:
+    birthday: ['caps', 't_shirts', 'mugs']
+    dinosaur: ['t_shirts', 'caps']
+    gift: ['mugs', 'caps', 't_shirts', 'dresses']
+    # add without deploy
+```
+
+Channel default `FASHION_WEB` via `ChannelContext`; override per-call `?channelCode=FASHION_WEB`. Locale hard-coded `en_US` for contest (extendable to `de_DE|fr_FR` at `config/routes/shop.yaml:5`).
+
+## Security
+
+`src/Security/WishlistAccessChecker.php:21` — owned wishlists (`getShopUser() !== null`) require `ROLE_USER` + owner `id` match → `403`. Anonymous gift registries are *shareable by design* (`shopUser === null` → allow) — required for contest anon `move_to_cart`. To lock anon to cookie, uncomment token check `wishlist.getToken() !== cookieTokenResolver->resolve()`.
+
+## Roadmap
+
+* `Money` Value Object (`sylius/money` post-contest, currently `int` cents with `TODO` at `BudgetOptimizer.php:25`)
+* `CatalogPromotion` discount preview in `optimize` (currently `saved = totalOriginal - total`)
+* Shared CMS story page generation (`sylius/cms-plugin` `Page` with `ProductsCarousel` from `Wishlist`)
+
+## License
+
+MIT — see `LICENSE`. Sylius is MIT, WishlistPlugin is MIT.
+
+---
+
+*Built for `webmcp.devpost.com` — `OpenAI WebMCP Challenge`. Hosted at `https://wishlist-concierge.ddev.site` (ChatGPT in-app browser or Chrome 149 `chrome://flags/#enable-webmcp-testing`).*

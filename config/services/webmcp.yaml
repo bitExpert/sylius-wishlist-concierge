@@ -1,0 +1,66 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder:
+        arguments:
+            $productRepository: '@sylius.repository.product'
+            $channelRepository: '@sylius.repository.channel'
+            $channelContext: '@sylius.context.channel'
+
+    BitExpert\SyliusWishlistConciergePlugin\Command\ConciergeTagsSetupCommand:
+        arguments:
+            $attributeRepository: '@sylius.repository.attribute'
+            $attributeValueRepository: '@sylius.repository.attribute_value'
+            $productRepository: '@sylius.repository.product'
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['console']
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer:
+        arguments:
+            $channelContext: '@sylius.context.channel'
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager:
+        arguments:
+            $wishlistFactory: '@sylius_wishlist_plugin.factory.wishlist'
+            $wishlistRepository: '@sylius_wishlist_plugin.repository.wishlist'
+            $wishlistProductFactory: '@sylius_wishlist_plugin.factory.wishlist_product'
+            $variantRepository: '@sylius.repository.product_variant'
+            $channelContext: '@sylius.context.channel'
+            $channelRepository: '@sylius.repository.channel'
+            $tokenStorage: '@security.token_storage'
+
+    BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker:
+        arguments:
+            $security: '@security.helper'
+            $cookieTokenResolver: '@sylius_wishlist_plugin.resolver.wishlist_cookie_token_resolver'
+
+    BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController:
+        tags: ['controller.service_arguments']
+        public: true
+
+    BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController:
+        arguments:
+            $wishlistManager: '@BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager'
+            $budgetOptimizer: '@BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer'
+            $wishlistRepository: '@sylius_wishlist_plugin.repository.wishlist'
+            $channelContext: '@sylius.context.channel'
+            $entityManager: '@doctrine.orm.entity_manager'
+            $accessChecker: '@BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker'
+        tags: ['controller.service_arguments']
+        public: true
+
+    BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController:
+        arguments:
+            $wishlistRepository: '@sylius_wishlist_plugin.repository.wishlist'
+            $channelContext: '@sylius.context.channel'
+            $entityManager: '@doctrine.orm.entity_manager'
+            $orderFactory: '@sylius.factory.order'
+            $orderItemFactory: '@sylius.factory.order_item'
+            $quantityModifier: '@sylius.modifier.order_item_quantity'
+            $orderProcessor: '@sylius.order_processing.order_processor'
+            $accessChecker: '@BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker'
+        tags: ['controller.service_arguments']
+        public: true

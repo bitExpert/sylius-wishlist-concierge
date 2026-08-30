@@ -1,0 +1,36 @@
+Resources:
+    - attribute.concierge_tags.yaml
+    - attribute.concierge_tags_values.yaml
+
+attribute.concierge_tags.yaml:
+    app.product_attribute.concierge_tags:
+        code: concierge_tags
+        type: selection
+        multiple: true
+        required: false
+
+attribute.concierge_tags_values.yaml:
+    app.product_attribute_value.concierge_tags_birthday:
+        attribute: attribute.concierge_tags
+        value: birthday
+    app.product_attribute_value.concierge_tags_dinosaur:
+        attribute: attribute.concierge_tags
+        value: dinosaur
+    app.product_attribute_value.concierge_tags_dino:
+        attribute: attribute.concierge_tags
+        value: dino
+    app.product_attribute_value.concierge_tags_gift:
+        attribute: attribute.concierge_tags
+        value: gift
+    app.product_attribute_value.concierge_tags_summer:
+        attribute: attribute.concierge_tags
+        value: summer
+    app.product_attribute_value.concierge_tags_winter:
+        attribute: attribute.concierge_tags
+        value: winter
+    app.product_attribute_value.concierge_tags_casual:
+        attribute: attribute.concierge_tags
+        value: casual
+    app.product_attribute_value.concierge_tags_formal:
+        attribute: attribute.concierge_tags
+        value: formal
