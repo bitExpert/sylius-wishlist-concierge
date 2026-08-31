@@ -28,12 +28,12 @@ final class ThemedProductFinderTest extends TestCase
 {
     public function testMatchesThemeByConciergeTagAttribute(): void
     {
-        $tagged = $this->createProduct('A', 'Tagged T-Shirt', ['dino']);
+        $tagged = $this->createProduct('A', 'Tagged T-Shirt', ['gift']);
         $notTagged = $this->createProduct('B', 'Plain Tee', []);
 
         $finder = $this->createFinder([$tagged, $notTagged]);
 
-        $results = $finder->find('dino', 'FASHION_WEB', null, null, null);
+        $results = $finder->find('gift', 'FASHION_WEB', null, null, null);
 
         self::assertCount(1, $results);
         self::assertSame('A', $results[0]['code']);
@@ -45,7 +45,7 @@ final class ThemedProductFinderTest extends TestCase
 
         $finder = $this->createFinder([$product]);
 
-        $results = $finder->find('dino', 'FASHION_WEB', null, null, null);
+        $results = $finder->find('gift', 'FASHION_WEB', null, null, null);
 
         self::assertCount(1, $results);
         self::assertSame('C', $results[0]['code']);

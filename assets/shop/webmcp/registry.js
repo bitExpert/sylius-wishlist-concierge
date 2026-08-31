@@ -96,7 +96,7 @@ const TOOLS = [
                 type: 'object',
                 properties: {
                     name: { type: 'string', description: 'Wishlist name, e.g. Dino Birthday — $150' },
-                    theme: { type: 'string', description: 'Theme keyword: birthday, dinosaur, gift, summer, etc.' },
+                    theme: { type: 'string', description: 'Theme keyword: birthday, gift, summer, etc.' },
                     channelCode: { type: 'string', default: BASE_CHANNEL },
                 },
                 required: ['name', 'theme'],
@@ -113,7 +113,7 @@ const TOOLS = [
         },
         {
             name: 'product.search',
-            description: 'Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "dinosaur", "gift", "summer") or whose name contains the theme string.',
+            description: 'Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
             inputSchema: {
                 type: 'object',
                 properties: {

@@ -18,7 +18,7 @@ final class WishlistCreateRequest
 {
     #[Assert\NotBlank(message: 'Wishlist name must not be blank.')]
     #[Assert\Length(max: 100, maxMessage: 'Name must be at most {{ limit }} characters.')]
-    public string $name = 'Gift Wishlist';
+    public string $name = 'Giftable Wishlist';
 
     #[Assert\NotBlank(message: 'Theme must not be blank.')]
     #[Assert\Length(max: 50)]

@@ -39,18 +39,18 @@ final class ConciergeTagsSetupCommand extends Command
      * @var array<string, string[]>
      */
     private const array PRODUCT_TAGS = [
-        'Ethereal_Drift_T_Shirt' => ['dino', 'summer', 'casual'],
+        'Ethereal_Drift_T_Shirt' => ['summer', 'casual'],
         'Peach_Sunset_Tee' => ['summer', 'casual', 'gift'],
-        'Retro_Rainbow_Tee' => ['birthday', 'dino', 'gift'],
-        'Neon_Drift_Tee' => ['dino', 'summer'],
+        'Retro_Rainbow_Tee' => ['birthday', 'gift'],
+        'Neon_Drift_Tee' => ['summer'],
         'Wanderlust_Tee' => ['casual', 'summer'],
         'Classic_Denim_Jeans' => ['casual', 'winter'],
         'Slim_Fit_Jeans' => ['formal', 'winter'],
         'Aria_Midi_Dress' => ['formal', 'gift', 'summer'],
         'Bella_Sundress' => ['summer', 'casual'],
-        'Capri_Summer_Cap' => ['summer', 'dino', 'casual'],
-        'Classic_Baseball_Cap' => ['dino', 'casual', 'gift'],
-        'Polarized_Sun_Cap' => ['summer', 'dino'],
+        'Capri_Summer_Cap' => ['summer', 'casual'],
+        'Classic_Baseball_Cap' => ['casual', 'gift'],
+        'Polarized_Sun_Cap' => ['summer'],
     ];
 
     public function __construct(

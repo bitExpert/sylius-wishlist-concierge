@@ -12,7 +12,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-**Agent + human co-curate themed, budget-aware gift registries on Sylius.** Instead of clicking 30 filters, you tell your agent *“dino birthday for 8yo, $150”* — it searches taxons, builds a wishlist, optimizes for budget with Sylius `ChannelPricing`, and moves the best fit to cart after your confirm.
+**Agent + human co-curate themed, budget-aware gift registries on Sylius.** Instead of clicking 30 filters, you tell your agent *“birthday for my nephew”* — it searches taxons, builds a wishlist, optimizes for budget with Sylius `ChannelPricing`, and moves the best fit to cart after your confirm.
 
 **Demo (live):** `https://wishlist-concierge.ddev.site/en_US/` · **Video:** ⚠️ **TODO — insert <3 min YouTube public link required by [webmcp.devpost.com/rules](https://webmcp.devpost.com/rules)** · **Devpost:** `https://webmcp.devpost.com` · **Spec:** `https://webmachinelearning.github.io/webmcp/`
 
@@ -45,8 +45,8 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 **Before:** 30 filter clicks, manual budget math `7589+1703+...`, missed `CatalogPromotion`, abandoned cart. **After:** one conversation.
 
 **Story 1 — Themed gift**
-> User: “birthday / dinosaur for my nephew”
-> Agent: `product.search {theme:"dinosaur"}` → maps via `config/packages/bitexpert_wishlist_concierge.yaml:2` `dino→[t_shirts,caps]` → `ThemedProductFinder.php:66` channel-scoped QB (`JOIN p.channels`, `JOIN t.code`) → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
+> User: “birthday for my nephew”
+> Agent: `product.search {theme:"gift"}` → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
 
 **Story 2 — Budget**
 > Agent: `wishlist.optimize_for_budget {wishlistId:2, budgetCents:15000}` → `BudgetOptimizer.php:25` cheapest-first knapsack with `quantity * ChannelPricing` → `chosen:["Lunar_Echo_T_Shirt-variant-0"], total $17.03, $7 remaining` + explanation string. Human decides to increase budget.
@@ -60,8 +60,8 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 
 **Agent prompts (Inspector or `document.modelContext` console):**
 ```
-wishlist.create {"name":"Dino Birthday — $150","theme":"dinosaur"}
-product.search {"theme":"dinosaur","limit":4}
+wishlist.create {"name":"Dino Birthday — $150","theme":"birthday"}
+product.search {"theme":"gift","limit":4}
 wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
 wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
 wishlist.move_to_cart {"wishlistId":2}
@@ -220,7 +220,7 @@ List recent wishlists for `FASHION_WEB`.
     "type": "object",
     "properties": {
       "name": { "type": "string", "description": "Wishlist name, e.g. Dino Birthday — $150" },
-      "theme": { "type": "string", "description": "Theme keyword: birthday, dinosaur, gift, summer, etc." },
+      "theme": { "type": "string", "description": "Theme keyword: birthday, gift, summer, etc." },
       "channelCode": { "type": "string", "default": "FASHION_WEB" }
     },
     "required": ["name","theme"]
@@ -234,7 +234,7 @@ List recent wishlists for `FASHION_WEB`.
 ```json
 {
   "name": "product.search",
-  "description": "Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. \"dinosaur\", \"gift\", \"summer\") or whose name contains the theme string. Theme is also mapped to taxons (e.g. dinosaur -> t_shirts/caps).",
+  "description": "Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. \"gift\", \"summer\") or whose name contains the theme string. Theme is also mapped to taxons.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -402,7 +402,6 @@ ddev exec vendor/bin/console lint:twig templates/shop/webmcp/
 parameters:
   bitexpert_wishlist_concierge.themes:
     birthday: ['caps', 't_shirts', 'mugs']
-    dinosaur: ['t_shirts', 'caps']
     gift: ['mugs', 'caps', 't_shirts', 'dresses']
     # add without deploy
 ```
