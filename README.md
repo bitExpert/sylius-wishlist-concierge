@@ -30,11 +30,11 @@
 
 ## Why WebMCP?
 
-| Actuation (DOM scraping) | WebMCP tool (structured) |
-|---|---|
+| Actuation (DOM scraping)                                                                     | WebMCP tool (structured)                                                                                                                                                        |
+|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Agent guesses `button[type=submit]` meaning, scrapes `div.price`, hallucinates variant codes | Website **declares** purpose: `product.search`, `wishlist.optimize_for_budget` with JSON Schema; agent calls `variantCode:"Ethereal_Drift_T_Shirt-variant-0"` deterministically |
-| 15 steps, each open to interpretation | 1 contract per capability; shared `Channel`/`Locale` state |
-| Brittle on theme change | Progressive enhancement — works without WebMCP, better *with* |
+| 15 steps, each open to interpretation                                                        | 1 contract per capability; shared `Channel`/`Locale` state                                                                                                                      |
+| Brittle on theme change                                                                      | Progressive enhancement — works without WebMCP, better *with*                                                                                                                   |
 
 Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an MCP server in client-side JS. Implementations: `assets/shop/webmcp/registry.js:30` `registerAll()` registers 8 imperative tools with `readOnlyHint` vs human-confirm on money.
 
@@ -60,7 +60,7 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 
 **Agent prompts (Inspector or `document.modelContext` console):**
 ```
-wishlist.create {"name":"Dino Birthday — $150","theme":"birthday"}
+wishlist.create {"name":"Birthday Wishlist — $150","theme":"birthday"}
 product.search {"theme":"gift","limit":4}
 wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
 wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
@@ -172,14 +172,15 @@ All tools are imperative at `assets/shop/webmcp/registry.js:37` via `document.mo
 **Error handling:** Every tool's `execute` function is wrapped by `withErrorHandling()` — if the underlying API call throws, the tool returns a structured `{error, message}` JSON payload instead of crashing the agent. The `apiFetch()` helper also parses server-side `{error, message, violations}` envelopes so the front-end (and the agent) always receives a consistent error shape.
 
 **Custom events (DOM):** Tools dispatch events that the UI listens to for live feedback:
-| Event | Fired by | Payload |
-|---|---|---|
-| `webmcp:toast` | `toolbox_controller.js`, `apiFetch` | `{type: "success"|"error"|"info", message}` |
-| `webmcp:wishlist-created` | `wishlist.create_themed` | `{wishlist: {id, name, ...}}` |
-| `webmcp:wishlist-updated` | `wishlist.add_item` | `{wishlist: {...}}` |
-| `webmcp:promotions-applied` | `wishlist.optimize_for_budget` | `{promotionsApplied: [...]}` |
-| `webmcp:cart-created` | `wishlist.move_to_cart` | `{cartToken, cartUrl, ...}` |
-| `webmcp:ready` | `registerAll()` | `{count: 8}` |
+
+| Event                       | Fired by                            | Payload                       |
+|-----------------------------|-------------------------------------|-------------------------------|
+| `webmcp:toast`              | `toolbox_controller.js`, `apiFetch` | `{type: "success"|"error"|"info", message}` |
+| `webmcp:wishlist-created`   | `wishlist.create_themed`            | `{wishlist: {id, name, ...}}` |
+| `webmcp:wishlist-updated`   | `wishlist.add_item`                 | `{wishlist: {...}}`           |
+| `webmcp:promotions-applied` | `wishlist.optimize_for_budget`      | `{promotionsApplied: [...]}`  |
+| `webmcp:cart-created`       | `wishlist.move_to_cart`             | `{cartToken, cartUrl, ...}`   |
+| `webmcp:ready`              | `registerAll()`                     | `{count: 9}`                  |
 
 ### `wishlist.list` — `readOnlyHint:true`
 List recent wishlists for `FASHION_WEB`.
@@ -215,11 +216,11 @@ List recent wishlists for `FASHION_WEB`.
 ```json
 {
   "name": "wishlist.create",
-  "description": "Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Dino Birthday — $150\".",
+  "description": "Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Birthday Wishlist — $150\".",
   "inputSchema": {
     "type": "object",
     "properties": {
-      "name": { "type": "string", "description": "Wishlist name, e.g. Dino Birthday — $150" },
+      "name": { "type": "string", "description": "Wishlist name, e.g. Birthday Wishlist — $150" },
       "theme": { "type": "string", "description": "Theme keyword: birthday, gift, summer, etc." },
       "channelCode": { "type": "string", "default": "FASHION_WEB" }
     },
@@ -323,9 +324,9 @@ List recent wishlists for `FASHION_WEB`.
 
 The repository exposes the `inputSchema` of every imperative tool as **JSON-Schema** over HTTP, introspected directly from the Symfony Validator constraints on each tool's input DTO (`ToolContractMetadata`). This makes the "structured contract" declared via WebMCP discoverable by any API consumer or test client, and guarantees the documented schema and the server-side validation are always in sync.
 
-| Endpoint | Description |
-|---|---|
-| `GET /en_US/concierge/contracts` | List all tool contracts, e.g. `{tools:[{name,dto,inputSchema}]}` |
+| Endpoint                                | Description                                                          |
+|-----------------------------------------|----------------------------------------------------------------------|
+| `GET /en_US/concierge/contracts`        | List all tool contracts, e.g. `{tools:[{name,dto,inputSchema}]}`     |
 | `GET /en_US/concierge/contracts/{tool}` | Single contract for a tool, e.g. `/contracts/wishlist.create_themed` |
 
 The front-end `registry.js` `inputSchema` mirrors these contracts — the server-side `ToolContractValidator` enforces them on every request, so the schema shown in this reference, the tool advertised to the agent, and the payload actually validated are all one and the same.
@@ -379,14 +380,14 @@ ddev exec vendor/bin/phpunit tests/Unit/Service/BudgetOptimizerTest.php --testdo
 ```bash
 playwright-cli -s=wishlist open https://wishlist-concierge.ddev.site/en_US/ --ignore-https-errors
 playwright-cli -s=wishlist eval "await document.modelContext.getTools().then(t=>t.map(x=>x.name))"
-# → ["wishlist.list","wishlist.get","wishlist.create_themed","product.search","product.get_details","wishlist.add_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
+# → ["wishlist.list","wishlist.get","wishlist.create","product.search","product.get_details","wishlist.add_item","wishlist.remove_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
 playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search'),{theme:'gift',limit:2})"
 ```
 
 **Machine-readable contracts (verify server-side schema is in sync):**
 ```bash
-curl -s https://wishlist-concierge.ddev.site/en_US/concierge/contracts | python3 -m json.tool   # all 4 imperative tools
-curl -s https://wishlist-concierge.ddev.site/en_US/concierge/contracts/wishlist.create_themed | python3 -m json.tool
+curl -s https://wishlist-concierge.ddev.site/concierge/contracts | python3 -m json.tool   # all 4 imperative tools
+curl -s https://wishlist-concierge.ddev.site/concierge/contracts/wishlist.create | python3 -m json.tool
 ```
 
 **Style:**

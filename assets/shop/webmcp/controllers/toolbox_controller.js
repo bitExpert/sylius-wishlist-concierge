@@ -1,22 +1,68 @@
 import { Controller } from '@hotwired/stimulus';
-import { TOOLS } from '../registry.js';
 
 export default class extends Controller {
     static targets = ['modal', 'body', 'loader', 'footer'];
 
     connect() {
         this.modalInstance = null;
+        this.registeredTools = new Map();
+        this.toolChangeTimeout = null;
     }
 
     async open() {
+        if (!('modelContext' in document) || !document.modelContext.getTools) {
+            window.dispatchEvent(new CustomEvent('webmcp:toast', {
+                detail: { type: 'error', message: 'WebMCP unavailable — enable chrome://flags/#enable-webmcp-testing' },
+            }));
+            return;
+        }
+
         this.showModal();
-        this.renderToolList();
+        await this.refreshTools();
+        document.modelContext.addEventListener('toolchange', this.handleToolChange.bind(this));
     }
 
     close() {
         if (this.modalInstance) {
             this.modalInstance.hide();
         }
+        if (document.modelContext) {
+            document.modelContext.removeEventListener('toolchange', this.handleToolChange.bind(this));
+        }
+    }
+
+    handleToolChange() {
+        if (this.toolChangeTimeout) {
+            clearTimeout(this.toolChangeTimeout);
+        }
+        this.toolChangeTimeout = setTimeout(async () => {
+            if (this.modalInstance && this.modalInstance._isShown) {
+                await this.refreshTools();
+            }
+        }, 250);
+    }
+
+    async refreshTools() {
+        if (this.loaderTarget) {
+            this.loaderTarget.remove();
+        }
+
+        const tools = await document.modelContext.getTools();
+        this.registeredTools.clear();
+        tools.forEach((tool) => {
+            this.registeredTools.set(tool.name, tool);
+        });
+
+        if (tools.length === 0) {
+            this.bodyTarget.innerHTML = '<div class="text-muted text-center py-3">No tools available.</div>';
+            this.footerTarget.style.display = 'none';
+            return;
+        }
+
+        const html = tools.map((tool) => this.renderToolCard(tool)).join('');
+        this.bodyTarget.innerHTML = `<div class="row g-3">${html}</div>`;
+
+        this.footerTarget.style.display = '';
     }
 
     showModal() {
@@ -32,26 +78,19 @@ export default class extends Controller {
         }
     }
 
-    renderToolList() {
-        if (this.loaderTarget) {
-            this.loaderTarget.remove();
-        }
-
-        const tools = TOOLS;
-        if (tools.length === 0) {
-            this.bodyTarget.innerHTML = '<div class="text-muted text-center py-3">No tools available.</div>';
-            return;
-        }
-
-        const html = tools.map((tool) => this.renderToolCard(tool)).join('');
-        this.bodyTarget.innerHTML = `<div class="row g-3">${html}</div>`;
-
-        this.footerTarget.style.display = '';
-    }
-
     renderToolCard(tool) {
-        const properties = tool.inputSchema?.properties || {};
-        const required = tool.inputSchema?.required || [];
+        // Normalize inputSchema: if it's a string, parse it; fallback to empty object on error
+        let schema = tool.inputSchema;
+        if (typeof schema === 'string') {
+            try {
+                schema = JSON.parse(schema);
+            } catch (e) {
+                console.warn('[WebMCP] Invalid inputSchema for tool', tool.name, e);
+                schema = {};
+            }
+        }
+        const properties = schema?.properties || {};
+        const required = schema?.required || [];
         const fields = Object.entries(properties)
             .map(([key, prop]) => this.renderField(tool.name, key, prop, required.includes(key)))
             .join('');
@@ -65,7 +104,7 @@ export default class extends Controller {
             <div class="col-12 col-md-6">
                 <div class="card h-100" data-tool-name="${tool.name}">
                     <div class="card-body p-3">
-                        <h6 class="card-title mb-1">${this.escapeHtml(tool.name)}${readOnlyBadge}</h6>
+                        <h6 class="card-title mb-1">${this.escapeHtml(tool.name || tool.title || 'Tool')}${readOnlyBadge}</h6>
                         <p class="card-text small text-muted mb-2">${this.escapeHtml(tool.description)}</p>
                         <form data-action="submit->webmcp--toolbox#runTool">
                             <input type="hidden" name="_toolName" value="${tool.name}">
@@ -85,10 +124,13 @@ export default class extends Controller {
     renderField(toolName, key, prop, required) {
         const requiredAttr = required ? 'required' : '';
         const requiredMark = required ? ' <span class="text-danger">*</span>' : '';
-        const desc = prop.description ? `<div class="form-text">${this.escapeHtml(prop.description)}</div>` : '';
+
+        // Normalize prop: if it's a string, parse it
+        const schema = typeof prop === 'string' ? JSON.parse(prop) : prop;
+        const desc = schema.description ? `<div class="form-text">${this.escapeHtml(schema.description)}</div>` : '';
 
         let input;
-        if (prop.type === 'boolean') {
+        if (schema.type === 'boolean') {
             input = `
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" name="${key}" id="${toolName}-${key}" value="1">
@@ -97,16 +139,16 @@ export default class extends Controller {
             return `<div class="mb-2">${input}</div>`;
         }
 
-        if (prop.type === 'integer' || prop.type === 'number') {
-            const min = prop.minimum !== undefined ? `min="${prop.minimum}"` : '';
-            const max = prop.maximum !== undefined ? `max="${prop.maximum}"` : '';
-            const step = prop.type === 'number' ? 'step="0.01"' : '';
-            const placeholder = prop.default !== undefined ? `value="${prop.default}"` : '';
+        if (schema.type === 'integer' || schema.type === 'number') {
+            const min = schema.minimum !== undefined ? `min="${schema.minimum}"` : '';
+            const max = schema.maximum !== undefined ? `max="${schema.maximum}"` : '';
+            const step = schema.type === 'number' ? 'step="0.01"' : '';
+            const placeholder = schema.default !== undefined ? `value="${schema.default}"` : '';
             input = `<input type="number" class="form-control form-control-sm" name="${key}" id="${toolName}-${key}" ${min} ${max} ${step} ${placeholder} ${requiredAttr}>`;
-        } else if (Array.isArray(prop.items)) {
+        } else if (Array.isArray(schema.items)) {
             input = `<input type="text" class="form-control form-control-sm" name="${key}" id="${toolName}-${key}" placeholder='["item1","item2"]' ${requiredAttr}>`;
         } else {
-            const placeholder = prop.default !== undefined ? `value="${prop.default}"` : '';
+            const placeholder = schema.default !== undefined ? `value="${schema.default}"` : '';
             input = `<input type="text" class="form-control form-control-sm" name="${key}" id="${toolName}-${key}" ${placeholder} ${requiredAttr}>`;
         }
 
@@ -119,15 +161,39 @@ export default class extends Controller {
         const formData = new FormData(form);
         const toolName = formData.get('_toolName');
 
+        const tool = this.registeredTools.get(toolName);
+        if (!tool) {
+            window.dispatchEvent(new CustomEvent('webmcp:toast', {
+                detail: { type: 'error', message: `Unknown tool "${toolName}"` },
+            }));
+            return;
+        }
+
+        // Normalize inputSchema: if it's a string, parse it; fallback to empty object on error
+        let schema = tool.inputSchema;
+        if (typeof schema === 'string') {
+            try {
+                schema = JSON.parse(schema);
+            } catch (e) {
+                console.warn('[WebMCP] Invalid inputSchema for tool', tool.name, e);
+                schema = {};
+            }
+        }
+        const properties = schema?.properties || {};
+
         const payload = {};
         for (const [key, value] of formData.entries()) {
             if (key === '_toolName') continue;
-            const prop = this.findToolProperty(toolName, key);
-            if (prop && prop.type === 'integer') {
+            const prop = properties[key];
+            if (!prop) continue;
+
+            const schema = typeof prop === 'string' ? JSON.parse(prop) : prop;
+
+            if (schema.type === 'integer') {
                 payload[key] = parseInt(value, 10);
-            } else if (prop && prop.type === 'boolean') {
+            } else if (schema.type === 'boolean') {
                 payload[key] = value === '1' || value === 'true';
-            } else if (prop && prop.type === 'number') {
+            } else if (schema.type === 'number') {
                 payload[key] = parseFloat(value);
             } else {
                 try {
@@ -146,18 +212,11 @@ export default class extends Controller {
         if (runButton) runButton.disabled = true;
 
         try {
-            const tool = TOOLS.find((t) => t.name === toolName);
-            if (!tool) {
-                throw new Error(`Unknown tool "${toolName}"`);
-            }
-            // Hybrid execution: prefer the real WebMCP runtime path using the
-            // RegisteredTool handle captured during registration, but fall back
-            // to invoking the tool's execute() directly when WebMCP is
-            // unavailable or the tool failed to register.
-            const registered = window.__webmcpTools?.[toolName];
             let result;
-            if (registered && document.modelContext?.executeTool) {
-                result = await document.modelContext.executeTool(registered, payload);
+            // WebMCP executeTool expects a JSON string for input arguments, not an object
+            const inputArgs = JSON.stringify(payload);
+            if (document.modelContext?.executeTool) {
+                result = await document.modelContext.executeTool(tool, inputArgs);
             } else {
                 result = await tool.execute(payload, {});
             }
@@ -174,7 +233,9 @@ export default class extends Controller {
                 window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'success', message: summary } }));
             }
         } catch (e) {
-            window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'error', message: e.message || String(e) } }));
+            window.dispatchEvent(new CustomEvent('webmcp:toast', {
+                detail: { type: 'error', message: e.message || String(e) },
+            }));
         } finally {
             if (spinner) spinner.style.display = 'none';
             if (runButton) runButton.disabled = false;
@@ -201,11 +262,6 @@ export default class extends Controller {
             return `Cart created — ${result.cartUrl}`;
         }
         return `Tool "${toolName}" executed`;
-    }
-
-    findToolProperty(toolName, key) {
-        const tool = TOOLS.find((t) => t.name === toolName);
-        return tool?.inputSchema?.properties?.[key] || null;
     }
 
     escapeHtml(str) {

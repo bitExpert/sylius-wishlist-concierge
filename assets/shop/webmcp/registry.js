@@ -1,6 +1,6 @@
 /**
  * WebMCP Registry — Wishlist Concierge
- * Registers 8 imperative tools via document.modelContext.registerTool
+ * Registers 9 imperative tools via document.modelContext.registerTool
  * See https://webmachinelearning.github.io/webmcp/
  */
 const BASE_CHANNEL = 'FASHION_WEB';
@@ -91,11 +91,11 @@ const TOOLS = [
         },
         {
             name: 'wishlist.create',
-            description: 'Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Dino Birthday — $150".',
+            description: 'Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
             inputSchema: {
                 type: 'object',
                 properties: {
-                    name: { type: 'string', description: 'Wishlist name, e.g. Dino Birthday — $150' },
+                    name: { type: 'string', description: 'Wishlist name, e.g. Birthday Wishlist — $150' },
                     theme: { type: 'string', description: 'Theme keyword: birthday, gift, summer, etc.' },
                     channelCode: { type: 'string', default: BASE_CHANNEL },
                 },
@@ -271,15 +271,10 @@ async function registerAll() {
         return;
     }
 
-    // Use Promise.all to avoid race — ensures status only after all registrations settle
     const results = await Promise.allSettled(
         TOOLS.map(async (tool) => {
             try {
                 const registered = await document.modelContext.registerTool(tool);
-                // Share RegisteredTool handles via window: registry.js is duplicated
-                // into multiple webpack chunks (entrypoint + lazy Stimulus chunks), so
-                // module-level state would NOT be shared with the toolbox controller.
-                (window.__webmcpTools ??= {})[tool.name] = registered;
                 console.log('[WebMCP] registered', tool.name);
                 return { name: tool.name, ok: true };
             } catch (e) {
@@ -320,7 +315,6 @@ function updateStatus(state, text) {
 }
 
 // Registration is triggered by the shop entrypoint (entrypoint.js) — not here —
-// so that importing TOOLS from this module (e.g. by the Stimulus toolbox controller)
-// does not cause registration to run at module-load time.
+// so that the toolbox controller (a separate lazy chunk) doesn't trigger registration.
 
-export { registerAll, TOOLS };
+export { registerAll };

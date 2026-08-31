@@ -123,9 +123,12 @@ The plugin exposes **8 imperative tools** for AI agents:
 | `wishlist.optimize_for_budget` | Optimize for budget with promotions | ❌              |
 | `wishlist.move_to_cart`        | Move items to cart                  | ❌              |
 
+**Note:** 9 tools defined in `registry.js`.
+
 ### Tool registration
 - Single source of truth: `assets/shop/webmcp/registry.js`
-- Tools registered via `document.modelContext.registerTool()`
+- Tools registered via `document.modelContext.registerTool()` at runtime
+- The "WebMCP Toolbox" view now renders dynamically from `document.modelContext.getTools()` — always reflects what's registered
 - Frontend UI: WebMCP status badge (clicks open toolbox modal)
 
 ## 8. Development Workflow

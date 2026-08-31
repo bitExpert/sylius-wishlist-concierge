@@ -66,12 +66,12 @@ Create once via `chrome://flags`:
 playwright-cli kill-all
 playwright-cli open https://wishlist-concierge.ddev.site/en_US/ --profile=/tmp/webmcp-profile
 sleep 3
-playwright-cli snapshot | grep -A2 WebMCP          # expect: WebMCP: 8 tools ready
+playwright-cli snapshot | grep -A2 WebMCP          # expect: WebMCP: 9 tools ready
 playwright-cli --raw eval "JSON.stringify({isSecure:isSecureContext, hasDoc:'modelContext' in document})"
 # {"isSecure":true,"hasDoc":true}
-playwright-cli console | grep "registered"          # 8× [WebMCP] registered ...
+playwright-cli console | grep "registered"          # 9× [WebMCP] registered ...
 playwright-cli --raw eval "(async()=>{const t=await document.modelContext.getTools(); return t.map(x=>x.name).join(',')})()"
-# product.get_details,product.search,wishlist.add_item,...
+# product.get_details,product.search,wishlist.add_item,wishlist.remove_item,...
 ```
 
 If you see `WebMCP unavailable — enable flag` or `hasDoc:false`, check:
@@ -84,7 +84,7 @@ If you see `WebMCP unavailable — enable flag` or `hasDoc:false`, check:
 ```bash
 ./scripts/webmcp-playwright-cli-test.sh
 ```
-The script does `kill-all` → `open https --profile` → discovery (8 tools, `isSecure`, `getTools`, console) → sequential `fetch` calls for each tool (unique wishlist name `Playwright-Dino-<ts>`) → final `wishlist.move_to_cart` with mocked `window.confirm`. Exit 0 = all PASS.
+The script does `kill-all` → `open https --profile` → discovery (9 tools, `isSecure`, `getTools`, console) → sequential `fetch` calls for each tool (unique wishlist name `Playwright-Dino-<ts>`) → final `wishlist.move_to_cart` with mocked `window.confirm`. Exit 0 = all PASS.
 
 ## 5. Troubleshooting
 
@@ -95,7 +95,7 @@ The script does `kill-all` → `open https --profile` → discovery (8 tools, `i
 
 ## 6. References
 
-- `assets/shop/webmcp/registry.js:1` — registers 8 tools, `getBaseUrl()` uses `/{en_US|de_DE|fr_FR}`.
+- `assets/shop/webmcp/registry.js:1` — registers 9 tools, `getBaseUrl()` uses `/{en_US|de_DE|fr_FR}`.
 - `chrome://flags/#enable-webmcp-testing` → `Enables the WebMCP API` (needs M150/M151 unexpire on 152).
 - `https://pptr.dev/next/guides/webmcp` → `--enable-features=WebMCP`
 - `https://developer.chrome.com/docs/ai/webmcp` — local flag for development.
