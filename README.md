@@ -20,8 +20,8 @@
 > ```js
 > await document.modelContext.registerTool({
 >   name: "wishlist.create",
->   description: "Create a new themed wishlist for FASHION_WEB",
->   inputSchema: { type: "object", properties: { name:{type:"string"}, theme:{type:"string"}, channelCode:{type:"string", default:"FASHION_WEB"} }, required:["name","theme"] },
+>   description: "Create a new themed wishlist",
+>   inputSchema: { type: "object", properties: { name:{type:"string"}, theme:{type:"string"} }, required:["name","theme"] },
 >   execute: async (input) => fetch(`/en_US/concierge/wishlist`, {method:"POST", body: JSON.stringify(input)}).then(r=>r.json()).then(j=>JSON.stringify(j,null,2))
 > });
 > ```
@@ -73,7 +73,7 @@ curl -s "https://wishlist-concierge.ddev.site/en_US/concierge/products/search?th
 # → {"channelCode":"FASHION_WEB","count":2,"products":[{"code":"...","variantCode":"...","price":7589}]}
 
 cat > /tmp/new.json <<JSON
-{"name":"Test Validate — birthday","theme":"birthday","channelCode":"FASHION_WEB"}
+{"name":"Test Validate — birthday","theme":"birthday"}
 JSON
 curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist -H "Content-Type: application/json" -d @/tmp/new.json | python3 -m json.tool
 # → {"wishlist":{"id":2,"token":"...","name":"Test Validate — birthday",...}}
@@ -86,7 +86,7 @@ curl -s -X POST https://wishlist-concierge.ddev.site/en_US/concierge/wishlist -H
 # → {"error":"Validation failed","violations":[{"property":"name","message":"Wishlist name must not be blank."}]}
 
 # Channel validation (ThemedProductFinder.php:151 throws NotFoundHttpException → JSON 404 at ProductSearchController.php:62):
-curl -s "https://wishlist-concierge.ddev.site/en_US/concierge/products/search?theme=gift&channelCode=FOOBAR" | python3 -m json.tool
+curl -s "https://wishlist-concierge.ddev.site/en_US/concierge/products/search?theme=gift" | python3 -m json.tool
 # → {"error":"Channel \"FOOBAR\" not found. Available: FASHION_WEB"}
 
 # Optimize & cart (quantity-aware at BudgetOptimizer.php:42):
@@ -183,16 +183,14 @@ All tools are imperative at `assets/shop/webmcp/registry.js:37` via `document.mo
 | `webmcp:ready`              | `registerAll()`                     | `{count: 9}`                  |
 
 ### `wishlist.list` — `readOnlyHint:true`
-List recent wishlists for `FASHION_WEB`.
+List recent wishlists for the current channel.
 ```json
 {
   "name": "wishlist.list",
-  "description": "List recent wishlists for the current channel (FASHION_WEB, en_US). Use to discover existing wishlists before creating a new themed one.",
+  "description": "List recent wishlists for the current channel. The active channel is automatically inferred from the current Sylius context. Use to discover existing wishlists before creating a new themed one.",
   "inputSchema": {
     "type": "object",
-    "properties": {
-      "channelCode": { "type": "string", "description": "Channel code, defaults to FASHION_WEB", "default": "FASHION_WEB" }
-    }
+    "properties": {}
   },
   "execute": "GET /en_US/concierge/wishlist → {wishlists:[{id,token,name,channelCode,items}], channelCode}"
 }
@@ -216,18 +214,17 @@ List recent wishlists for `FASHION_WEB`.
 ```json
 {
   "name": "wishlist.create",
-  "description": "Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Birthday Wishlist — $150\".",
+  "description": "Create a new themed wishlist. The active channel is automatically inferred from the current Sylius context. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Birthday Wishlist — $150\".",
   "inputSchema": {
     "type": "object",
     "properties": {
       "name": { "type": "string", "description": "Wishlist name, e.g. Birthday Wishlist — $150" },
-      "theme": { "type": "string", "description": "Theme keyword: birthday, gift, summer, etc." },
-      "channelCode": { "type": "string", "default": "FASHION_WEB" }
+      "theme": { "type": "string", "description": "Theme keyword: birthday, gift, summer, etc." }
     },
     "required": ["name","theme"]
   },
   "constraints": "WishlistCreateRequest.php #[Assert\\NotBlank, Length(max:100), Regex ^[\\pL\\pN\\s\\-_]+$]",
-  "execute": "POST /en_US/concierge/wishlist {name,theme,channelCode} → 201 {wishlist} | 422 {violations}"
+  "execute": "POST /en_US/concierge/wishlist {name,theme} → 201 {wishlist} | 422 {violations}"
 }
 ```
 
@@ -235,7 +232,7 @@ List recent wishlists for `FASHION_WEB`.
 ```json
 {
   "name": "product.search",
-  "description": "Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. \"gift\", \"summer\") or whose name contains the theme string. Theme is also mapped to taxons.",
+  "description": "Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. \"gift\", \"summer\") or whose name contains the theme string.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -243,8 +240,7 @@ List recent wishlists for `FASHION_WEB`.
       "taxonCodes": { "type": "array", "items": { "type": "string" }, "description": "Optional taxon filter e.g. [\"t_shirts\",\"caps\"]" },
       "priceMinCents": { "type": "integer", "description": "Min price cents" },
       "priceMaxCents": { "type": "integer", "description": "Max price cents" },
-      "limit": { "type": "integer", "default": 12, "minimum": 1, "maximum": 50 },
-      "channelCode": { "type": "string", "default": "FASHION_WEB" }
+      "limit": { "type": "integer", "default": 12, "minimum": 1, "maximum": 50 }
     },
     "required": ["theme"]
   },
@@ -256,13 +252,13 @@ List recent wishlists for `FASHION_WEB`.
 ```json
 {
   "name": "product.get_details",
-  "description": "Get product details by productCode for FASHION_WEB including variants and pricing.",
+  "description": "Get product details by productCode, including variants and pricing.",
   "inputSchema": {
     "type": "object",
     "properties": { "productCode": { "type": "string" } },
     "required": ["productCode"]
   },
-  "execute": "GET /api/v2/shop/products/{code}?channelCode=FASHION_WEB (Accept: application/ld+json)"
+  "execute": "GET /api/v2/shop/products/{code} (Accept: application/ld+json)"
 }
 ```
 
@@ -316,7 +312,7 @@ List recent wishlists for `FASHION_WEB`.
     },
     "required": ["wishlistId"]
   },
-  "execute": "GET /wishlist/{id} preview → window.confirm(\"Move N items ($X) to cart?\") → POST /en_US/concierge/wishlist/{id}/move-to-cart {variantCodes} → 201 {cartToken,channelCode,items:[{variantCode,quantity,unitPrice,total}],total,totalFormatted,cartUrl:\"/en_US/cart\"} | {canceled:true} if declined | AbortSignal respected"
+  "execute": "GET /wishlist/{id} preview → window.confirm(\"Move N items ($X) to cart?\") → POST /en_US/concierge/wishlist/{id}/move-to-cart {variantCodes} → 201 {cartToken,items:[{variantCode,quantity,unitPrice,total}],total,totalFormatted,cartUrl:\"/en_US/cart\"} | {canceled:true} if declined | AbortSignal respected"
 }
 ```
 
@@ -407,7 +403,7 @@ parameters:
     # add without deploy
 ```
 
-Channel default `FASHION_WEB` via `ChannelContext`; override per-call `?channelCode=FASHION_WEB`. Locale hard-coded `en_US` for contest (extendable to `de_DE|fr_FR` at `config/routes/shop.yaml:5`).
+Channel is determined automatically via `ChannelContext`; override via FASHION_WEB setting.
 
 ## Security
 

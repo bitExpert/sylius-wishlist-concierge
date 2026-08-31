@@ -20,10 +20,6 @@ final class ProductSearchRequest
     #[Assert\Regex(pattern: '/^[\p{L}\p{N}\s\-_]*$/u', message: 'Theme contains invalid characters.')]
     public ?string $theme = null;
 
-    #[Assert\Length(max: 50)]
-    #[Assert\Regex(pattern: '/^[A-Z0-9_]+$/', message: 'Invalid channel code.')]
-    public string $channelCode = 'FASHION_WEB';
-
     #[Assert\PositiveOrZero]
     #[Assert\LessThanOrEqual(value: 10000000)]
     public ?int $priceMin = null;

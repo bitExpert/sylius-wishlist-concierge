@@ -200,6 +200,11 @@ final readonly class ThemedProductFinder
         return $this->channelContext->getChannel();
     }
 
+    public function getDefaultChannelCode(): string
+    {
+        return $this->channelContext->getChannel()->getCode();
+    }
+
     /** @return string[] */
     private function getTaxonCodes(ProductInterface $product): array
     {

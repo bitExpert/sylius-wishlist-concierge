@@ -62,12 +62,10 @@ function withErrorHandling(fn, toolName) {
 const TOOLS = [
         {
             name: 'wishlist.list',
-            description: 'List recent wishlists for the current channel (FASHION_WEB, en_US). Use to discover existing wishlists before creating a new themed one.',
+            description: 'List recent wishlists for the current channel. The active channel is automatically inferred from the current Sylius context. Use to discover existing wishlists before creating a new themed one.',
             inputSchema: {
                 type: 'object',
-                properties: {
-                    channelCode: { type: 'string', description: 'Channel code, defaults to FASHION_WEB', default: BASE_CHANNEL },
-                },
+                properties: {},
             },
             annotations: { readOnlyHint: true },
             execute: withErrorHandling(async (input) => {
@@ -91,20 +89,19 @@ const TOOLS = [
         },
         {
             name: 'wishlist.create',
-            description: 'Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
+            description: 'Create a new themed wishlist. The active channel is automatically inferred from the current Sylius context. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
             inputSchema: {
                 type: 'object',
                 properties: {
                     name: { type: 'string', description: 'Wishlist name, e.g. Birthday Wishlist — $150' },
                     theme: { type: 'string', description: 'Theme keyword: birthday, gift, summer, etc.' },
-                    channelCode: { type: 'string', default: BASE_CHANNEL },
                 },
                 required: ['name', 'theme'],
             },
             execute: withErrorHandling(async (input) => {
                 const data = await apiFetch('/concierge/wishlist', {
                     method: 'POST',
-                    body: JSON.stringify({ name: input.name, theme: input.theme, channelCode: input.channelCode || BASE_CHANNEL }),
+                    body: JSON.stringify({ name: input.name, theme: input.theme }),
                 });
                 // Dispatch live UI update
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-created', { detail: data }));
@@ -113,7 +110,7 @@ const TOOLS = [
         },
         {
             name: 'product.search',
-            description: 'Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
+            description: 'Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -122,7 +119,6 @@ const TOOLS = [
                     priceMinCents: { type: 'integer', description: 'Min price cents' },
                     priceMaxCents: { type: 'integer', description: 'Max price cents' },
                     limit: { type: 'integer', default: 12 },
-                    channelCode: { type: 'string', default: BASE_CHANNEL },
                 },
                 required: ['theme'],
             },
@@ -130,7 +126,6 @@ const TOOLS = [
             execute: withErrorHandling(async (input) => {
                 const params = new URLSearchParams();
                 params.set('theme', input.theme);
-                params.set('channelCode', input.channelCode || BASE_CHANNEL);
                 params.set('limit', String(input.limit || 12));
                 if (input.priceMinCents) params.set('priceMin', String(input.priceMinCents));
                 if (input.priceMaxCents) params.set('priceMax', String(input.priceMaxCents));
@@ -141,7 +136,7 @@ const TOOLS = [
         },
         {
             name: 'product.get_details',
-            description: 'Get product details by productCode for FASHION_WEB including variants and pricing.',
+            description: 'Get product details by productCode, including variants and pricing.',
             inputSchema: {
                 type: 'object',
                 properties: { productCode: { type: 'string' } },

@@ -35,7 +35,6 @@ final class ProductSearchController extends AbstractController
     {
         $dto = new ProductSearchRequest();
         $dto->theme = $request->query->get('theme');
-        $dto->channelCode = $request->query->get('channelCode', 'FASHION_WEB');
         $dto->limit = (int) $request->query->get('limit', 12);
 
         $priceMin = $request->query->get('priceMin');
@@ -63,9 +62,9 @@ final class ProductSearchController extends AbstractController
         }
 
         try {
-                $results = $this->themedProductFinder->find(
+            $results = $this->themedProductFinder->find(
                 theme: $dto->theme,
-                channelCode: $dto->channelCode,
+                channelCode: null,
                 priceMin: $dto->priceMin,
                 priceMax: $dto->priceMax,
                 taxonCodes: $dto->taxonCodes,
@@ -76,7 +75,7 @@ final class ProductSearchController extends AbstractController
         }
 
         return $this->json([
-            'channelCode' => $dto->channelCode,
+            'channelCode' => $this->themedProductFinder->getDefaultChannelCode(),
             'theme' => $dto->theme,
             'count' => count($results),
             'products' => $results,

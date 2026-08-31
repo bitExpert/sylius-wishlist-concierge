@@ -47,7 +47,7 @@ final class WishlistController extends AbstractController
         /** @var WishlistCreateRequest $dto */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
-        $wishlist = $this->wishlistManager->createThemed($dto->name, $dto->theme, $dto->channelCode);
+        $wishlist = $this->wishlistManager->createThemed($dto->name, $dto->theme, null);
         $this->entityManager->persist($wishlist);
         $this->entityManager->flush();
 
