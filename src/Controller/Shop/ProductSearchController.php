@@ -6,6 +6,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
 use BitExpert\SyliusWishlistConciergePlugin\Dto\ProductSearchRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,6 +18,7 @@ final class ProductSearchController extends AbstractController
     public function __construct(
         private readonly ThemedProductFinder $themedProductFinder,
         private readonly ValidatorInterface $validator,
+        private readonly ValidationErrorFormatter $errorFormatter,
     ) {
     }
 
@@ -42,7 +44,10 @@ final class ProductSearchController extends AbstractController
 
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return $this->json(['error' => 'Validation failed', 'violations' => $this->formatViolations($violations)], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->json(
+                ['error' => 'Validation failed', 'violations' => $this->errorFormatter->format($violations)],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         if (null !== $dto->priceMin && null !== $dto->priceMax && $dto->priceMin > $dto->priceMax) {
@@ -68,14 +73,5 @@ final class ProductSearchController extends AbstractController
             'count' => count($results),
             'products' => $results,
         ]);
-    }
-
-    private function formatViolations($violations): array
-    {
-        $errors = [];
-        foreach ($violations as $v) {
-            $errors[] = ['property' => $v->getPropertyPath(), 'message' => $v->getMessage()];
-        }
-        return $errors;
     }
 }

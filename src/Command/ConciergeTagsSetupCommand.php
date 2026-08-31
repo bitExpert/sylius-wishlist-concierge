@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Sylius\Component\Attribute\Model\Attribute;
-use Sylius\Component\Attribute\Model\AttributeValue;
-use Sylius\Component\Attribute\Repository\AttributeRepositoryInterface;
-use Sylius\Component\Attribute\Repository\AttributeValueRepositoryInterface;
+use Sylius\Component\Product\Model\ProductAttribute;
+use Sylius\Component\Product\Model\ProductAttributeValue;
+use Sylius\Component\Product\Repository\ProductAttributeRepositoryInterface;
+use Sylius\Component\Product\Repository\ProductAttributeValueRepositoryInterface;
 use Sylius\Component\Core\Repository\ProductRepositoryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -46,8 +46,8 @@ final class ConciergeTagsSetupCommand extends Command
     ];
 
     public function __construct(
-        private AttributeRepositoryInterface $attributeRepository,
-        private AttributeValueRepositoryInterface $attributeValueRepository,
+        private ProductAttributeRepositoryInterface $attributeRepository,
+        private ProductAttributeValueRepositoryInterface $attributeValueRepository,
         private ProductRepositoryInterface $productRepository,
         private EntityManagerInterface $entityManager,
     ) {
@@ -75,7 +75,7 @@ final class ConciergeTagsSetupCommand extends Command
         $attribute = $this->attributeRepository->findOneBy(['code' => self::ATTRIBUTE_CODE]);
         if (null === $attribute) {
             $io->section("Creating attribute `{$this->attributeCode()}` (type: selection, multiple: true)");
-            $attribute = new Attribute();
+            $attribute = new ProductAttribute();
             $attribute->setCode(self::ATTRIBUTE_CODE);
             $attribute->setType('selection');
             $attribute->setMultiple(true);
@@ -106,7 +106,7 @@ final class ConciergeTagsSetupCommand extends Command
                 continue;
             }
             $io->writeln("  - creating: {$tag}");
-            $av = new AttributeValue();
+            $av = new ProductAttributeValue();
             $av->setAttribute($attribute);
             $av->setValue($tag);
 

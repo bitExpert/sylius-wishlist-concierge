@@ -4,6 +4,28 @@ services:
         autoconfigure: true
         public: false
 
+    BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator:
+        arguments:
+            $validator: '@validator'
+            $serializer: '@serializer'
+            $logger: '@logger'
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: 16 }
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter:
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory:
+
+    BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata:
+        arguments:
+            $metadataFactory: '@validator.mapping.class_metadata_factory'
+
+    BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController:
+        arguments:
+            $metadata: '@BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata'
+        tags: ['controller.service_arguments']
+        public: true
+
     BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder:
         arguments:
             $productRepository: '@sylius.repository.product'
@@ -12,8 +34,8 @@ services:
 
     BitExpert\SyliusWishlistConciergePlugin\Command\ConciergeTagsSetupCommand:
         arguments:
-            $attributeRepository: '@sylius.repository.attribute'
-            $attributeValueRepository: '@sylius.repository.attribute_value'
+            $attributeRepository: '@sylius.repository.product_attribute'
+            $attributeValueRepository: '@sylius.repository.product_attribute_value'
             $productRepository: '@sylius.repository.product'
             $entityManager: '@doctrine.orm.entity_manager'
         tags: ['console']

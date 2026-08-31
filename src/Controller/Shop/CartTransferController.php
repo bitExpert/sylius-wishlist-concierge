@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
@@ -19,8 +20,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class CartTransferController extends AbstractController
 {
@@ -33,8 +32,6 @@ final class CartTransferController extends AbstractController
         private readonly OrderItemQuantityModifierInterface $quantityModifier,
         private readonly OrderProcessorInterface $orderProcessor,
         private readonly WishlistAccessChecker $accessChecker,
-        private readonly ValidatorInterface $validator,
-        private readonly SerializerInterface $serializer,
     ) {
     }
 
@@ -52,17 +49,8 @@ final class CartTransferController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        try {
-            /** @var MoveToCartRequest $dto */
-            $dto = $this->serializer->deserialize($request->getContent() ?: '{}', MoveToCartRequest::class, 'json');
-        } catch (\Exception) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            return $this->json(['error' => 'Validation failed', 'violations' => $this->formatViolations($violations)], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        /** @var MoveToCartRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $variantCodes = $dto->variantCodes;
         $channel = $wishlist->getChannel() ?? $this->channelContext->getChannel();
@@ -114,14 +102,5 @@ final class CartTransferController extends AbstractController
             'totalFormatted' => sprintf('$%.2f', $cart->getTotal() / 100),
             'cartUrl' => sprintf('/%s/cart', $channel->getDefaultLocale()?->getCode() ?? 'en_US'),
         ], Response::HTTP_CREATED);
-    }
-
-    private function formatViolations($violations): array
-    {
-        $errors = [];
-        foreach ($violations as $v) {
-            $errors[] = ['property' => $v->getPropertyPath(), 'message' => $v->getMessage()];
-        }
-        return $errors;
     }
 }

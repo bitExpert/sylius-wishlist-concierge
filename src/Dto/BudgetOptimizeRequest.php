@@ -14,4 +14,12 @@ final class BudgetOptimizeRequest
     public int $budgetCents = 0;
 
     public bool $includePromotions = true;
+
+    // Accepts legacy "budget" alias from earlier API clients
+    public function setBudget(?int $budget): void
+    {
+        if (null !== $budget && 0 === $this->budgetCents) {
+            $this->budgetCents = $budget;
+        }
+    }
 }

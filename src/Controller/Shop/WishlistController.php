@@ -7,6 +7,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
 use BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer;
 use BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager;
@@ -18,8 +19,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class WishlistController extends AbstractController
 {
@@ -30,25 +29,14 @@ final class WishlistController extends AbstractController
         private readonly ChannelContextInterface $channelContext,
         private readonly EntityManagerInterface $entityManager,
         private readonly WishlistAccessChecker $accessChecker,
-        private readonly ValidatorInterface $validator,
-        private readonly SerializerInterface $serializer,
     ) {
     }
 
     #[Route('/concierge/wishlist', name: 'bitexpert_concierge_wishlist_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        try {
-            /** @var WishlistCreateRequest $dto */
-            $dto = $this->serializer->deserialize($request->getContent(), WishlistCreateRequest::class, 'json');
-        } catch (\Exception) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            return $this->json(['error' => 'Validation failed', 'violations' => $this->formatViolations($violations)], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        /** @var WishlistCreateRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $wishlist = $this->wishlistManager->createThemed($dto->name, $dto->theme, $dto->channelCode);
         $this->entityManager->persist($wishlist);
@@ -104,20 +92,8 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        $data = json_decode($request->getContent(), true) ?? [];
-        // Handle legacy alias
-        if (isset($data['productVariantCode']) && !isset($data['variantCode'])) {
-            $data['variantCode'] = $data['productVariantCode'];
-        }
-
-        $dto = new WishlistAddItemRequest();
-        $dto->variantCode = $data['variantCode'] ?? '';
-        $dto->quantity = isset($data['quantity']) ? (int) $data['quantity'] : 1;
-
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            return $this->json(['error' => 'Validation failed', 'violations' => $this->formatViolations($violations)], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        /** @var WishlistAddItemRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         try {
             $wishlist = $this->wishlistManager->addItem($wishlist, $dto->variantCode, $dto->quantity);
@@ -144,26 +120,8 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        try {
-            /** @var BudgetOptimizeRequest $dto */
-            $dto = $this->serializer->deserialize($request->getContent(), BudgetOptimizeRequest::class, 'json');
-        } catch (\Exception) {
-            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Support legacy "budget" alias
-        $raw = json_decode($request->getContent(), true) ?? [];
-        if (0 === $dto->budgetCents && isset($raw['budget'])) {
-            $dto->budgetCents = (int) $raw['budget'];
-        }
-        if (isset($raw['includePromotions'])) {
-            $dto->includePromotions = (bool) $raw['includePromotions'];
-        }
-
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            return $this->json(['error' => 'Validation failed', 'violations' => $this->formatViolations($violations)], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        /** @var BudgetOptimizeRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $result = $this->budgetOptimizer->optimize($wishlist, $dto->budgetCents);
 
@@ -175,14 +133,5 @@ final class WishlistController extends AbstractController
             'totalFormatted' => sprintf('$%.2f', $result['totalCents'] / 100),
             'savedFormatted' => sprintf('$%.2f', $result['savedCents'] / 100),
         ]);
-    }
-
-    private function formatViolations($violations): array
-    {
-        $errors = [];
-        foreach ($violations as $v) {
-            $errors[] = ['property' => $v->getPropertyPath(), 'message' => $v->getMessage()];
-        }
-        return $errors;
     }
 }
