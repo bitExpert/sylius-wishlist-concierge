@@ -124,7 +124,7 @@ final readonly class WishlistManager
     {
         foreach ($wishlist->getWishlistProducts() as $wp) {
             if ($wp->getId() === $itemId) {
-                $wishlist->removeWishlistProduct($wp);
+                $wishlist->removeProduct($wp);
                 return $wishlist;
             }
         }

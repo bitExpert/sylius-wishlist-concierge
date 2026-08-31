@@ -45,7 +45,7 @@ final class ToolContractValidator
     private const TOOL_CONTRACTS = [
         'bitexpert_concierge_wishlist_create' => WishlistCreateRequest::class,
         'bitexpert_concierge_wishlist_add_item' => WishlistAddItemRequest::class,
-        'bitexpert_concierge_wishlist_remove_item' => WishlistRemoveItemRequest::class,
+        'bitexpert_concierge_wishlist_remove_item_post' => WishlistRemoveItemRequest::class,
         'bitexpert_concierge_wishlist_optimize' => BudgetOptimizeRequest::class,
         'bitexpert_concierge_wishlist_move_to_cart' => MoveToCartRequest::class,
     ];
