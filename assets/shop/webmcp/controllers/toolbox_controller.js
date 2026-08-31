@@ -191,6 +191,9 @@ export default class extends Controller {
         if (toolName === 'wishlist.create' && result.id) {
             return `Created wishlist "${result.name}" (id: ${result.id})`;
         }
+        if (toolName === 'wishlist.remove_item' && result.wishlist) {
+            return `Removed item — wishlist now has ${(result.wishlist.items || []).length} item(s)`;
+        }
         if (toolName === 'product.search' && Array.isArray(result.products)) {
             return `Found ${result.count ?? result.products.length} product(s)`;
         }

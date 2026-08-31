@@ -8,6 +8,7 @@ use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
@@ -29,6 +30,7 @@ final class ToolContractMetadata
     public const TOOLS = [
         'wishlist.create' => WishlistCreateRequest::class,
         'wishlist.add_item' => WishlistAddItemRequest::class,
+        'wishlist.remove_item' => WishlistRemoveItemRequest::class,
         'wishlist.optimize_for_budget' => BudgetOptimizeRequest::class,
         'wishlist.move_to_cart' => MoveToCartRequest::class,
     ];

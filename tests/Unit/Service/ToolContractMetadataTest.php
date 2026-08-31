@@ -26,7 +26,7 @@ final class ToolContractMetadataTest extends TestCase
         $payload = $this->metadata->all();
 
         self::assertArrayHasKey('tools', $payload);
-        self::assertCount(4, $payload['tools']);
+        self::assertCount(5, $payload['tools']);
     }
 
     public function testUnknownToolReturnsNull(): void

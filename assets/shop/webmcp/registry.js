@@ -184,6 +184,27 @@ const TOOLS = [
             }, 'wishlist.add_item'),
         },
         {
+            name: 'wishlist.remove_item',
+            description: 'Remove an item from a wishlist by itemId. Supports both DELETE (RESTful) and POST (with JSON body).',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    wishlistId: { type: 'integer' },
+                    itemId: { type: 'integer', description: 'The DB id of the WishlistProduct to remove' },
+                },
+                required: ['wishlistId', 'itemId'],
+            },
+            execute: withErrorHandling(async (input, { signal }) => {
+                if (signal?.aborted) throw new Error('Aborted');
+                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/${input.itemId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
+                return JSON.stringify(data, null, 2);
+            }, 'wishlist.remove_item'),
+        },
+        {
             name: 'wishlist.optimize_for_budget',
             description: 'Optimize a wishlist for a budget (cents, USD). Applies eligible Sylius catalog promotions when includePromotions is true: returns chosen variantCodes, totalCents/savedCents, the list of active promotionsApplied and a human explanation. Use before move_to_cart to stay under budget.',
             inputSchema: {

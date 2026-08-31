@@ -7,6 +7,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
 use BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer;
@@ -101,6 +102,57 @@ final class WishlistController extends AbstractController
             $this->entityManager->flush();
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => 'Variant not found'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
+    }
+
+    #[Route('/concierge/wishlist/{id}/items/{itemId}', name: 'bitexpert_concierge_wishlist_remove_item', methods: ['DELETE'])]
+    public function removeItem(Request $request, int $id, int $itemId): JsonResponse
+    {
+        $wishlist = $this->wishlistRepository->find($id);
+        if (null === $wishlist) {
+            return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $this->accessChecker->assertCanModify($wishlist);
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
+        }
+
+        try {
+            $wishlist = $this->wishlistManager->removeItem($wishlist, $itemId);
+            $this->entityManager->flush();
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
+    }
+
+    #[Route('/concierge/wishlist/{id}/items/remove', name: 'bitexpert_concierge_wishlist_remove_item_post', methods: ['POST'])]
+    public function postRemoveItem(Request $request, int $id): JsonResponse
+    {
+        $wishlist = $this->wishlistRepository->find($id);
+        if (null === $wishlist) {
+            return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $this->accessChecker->assertCanModify($wishlist);
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
+        }
+
+        /** @var WishlistRemoveItemRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+
+        try {
+            $wishlist = $this->wishlistManager->removeItem($wishlist, $dto->itemId);
+            $this->entityManager->flush();
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);

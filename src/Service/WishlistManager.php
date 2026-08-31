@@ -112,6 +112,18 @@ final readonly class WishlistManager
         return $wishlist;
     }
 
+    public function removeItem(WishlistInterface $wishlist, int $itemId): WishlistInterface
+    {
+        foreach ($wishlist->getWishlistProducts() as $wp) {
+            if ($wp->getId() === $itemId) {
+                $wishlist->removeWishlistProduct($wp);
+                return $wishlist;
+            }
+        }
+
+        throw new \InvalidArgumentException(sprintf('Item %d not found in wishlist.', $itemId));
+    }
+
     public function toArray(WishlistInterface $wishlist, ?string $locale = null): array
     {
         $resolvedLocale = $locale ?? $wishlist->getChannel()?->getDefaultLocale()?->getCode() ?? 'en_US';
