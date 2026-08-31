@@ -1,6 +1,6 @@
 /**
  * WebMCP Registry — Wishlist Concierge
- * Registers 10 imperative tools via document.modelContext.registerTool
+ * Registers 11 imperative tools via document.modelContext.registerTool
  * See https://webmachinelearning.github.io/webmcp/
  */
 const BASE_CHANNEL = 'FASHION_WEB';
@@ -208,6 +208,26 @@ const TOOLS = [
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
                 return JSON.stringify(data, null, 2);
             }, 'wishlist.bulk_add'),
+        },
+        {
+            name: 'wishlist.clear',
+            description: 'Remove all items from a wishlist in one call. Useful for resetting a themed list before re-curating.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    wishlistId: { type: 'integer' },
+                },
+                required: ['wishlistId'],
+            },
+            execute: withErrorHandling(async (input, { signal }) => {
+                if (signal?.aborted) throw new Error('Aborted');
+                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/clear`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                });
+                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
+                return JSON.stringify(data, null, 2);
+            }, 'wishlist.clear'),
         },
         {
             name: 'wishlist.remove_item',

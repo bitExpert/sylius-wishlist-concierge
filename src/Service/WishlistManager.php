@@ -23,6 +23,7 @@ use Sylius\WishlistPlugin\Factory\WishlistProductFactoryInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
 
 final readonly class WishlistManager
 {
@@ -254,5 +255,19 @@ final readonly class WishlistManager
         }
         
         return $this->bulkAddItems($wishlist, $items);
+    }
+
+    public function clearAllItems(WishlistInterface $wishlist): WishlistInterface
+    {
+        foreach ($wishlist->getWishlistProducts() as $wp) {
+            $wishlist->removeProduct($wp);
+        }
+        
+        return $wishlist;
+    }
+
+    public function clearAllItemsFromRequest(WishlistInterface $wishlist, WishlistClearRequest $request): WishlistInterface
+    {
+        return $this->clearAllItems($wishlist);
     }
 }
