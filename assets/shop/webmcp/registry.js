@@ -108,7 +108,7 @@ const TOOLS = [
             }, 'wishlist.create'),
         },
         {
-            name: 'product.search_themed',
+            name: 'product.search',
             description: 'Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "dinosaur", "gift", "summer") or whose name contains the theme string.',
             inputSchema: {
                 type: 'object',
@@ -133,7 +133,7 @@ const TOOLS = [
                 if (input.taxonCodes) input.taxonCodes.forEach((c) => params.append('taxonCodes[]', c));
                 const data = await apiFetch(`/concierge/products/search?${params.toString()}`);
                 return JSON.stringify(data, null, 2);
-            }, 'product.search_themed'),
+            }, 'product.search'),
         },
         {
             name: 'product.get_details',

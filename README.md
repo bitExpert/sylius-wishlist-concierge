@@ -32,7 +32,7 @@
 
 | Actuation (DOM scraping) | WebMCP tool (structured) |
 |---|---|
-| Agent guesses `button[type=submit]` meaning, scrapes `div.price`, hallucinates variant codes | Website **declares** purpose: `product.search_themed`, `wishlist.optimize_for_budget` with JSON Schema; agent calls `variantCode:"Ethereal_Drift_T_Shirt-variant-0"` deterministically |
+| Agent guesses `button[type=submit]` meaning, scrapes `div.price`, hallucinates variant codes | Website **declares** purpose: `product.search`, `wishlist.optimize_for_budget` with JSON Schema; agent calls `variantCode:"Ethereal_Drift_T_Shirt-variant-0"` deterministically |
 | 15 steps, each open to interpretation | 1 contract per capability; shared `Channel`/`Locale` state |
 | Brittle on theme change | Progressive enhancement — works without WebMCP, better *with* |
 
@@ -46,7 +46,7 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 
 **Story 1 — Themed gift**
 > User: “birthday / dinosaur for my nephew”
-> Agent: `product.search_themed {theme:"dinosaur"}` → maps via `config/packages/bitexpert_wishlist_concierge.yaml:2` `dino→[t_shirts,caps]` → `ThemedProductFinder.php:66` channel-scoped QB (`JOIN p.channels`, `JOIN t.code`) → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
+> Agent: `product.search {theme:"dinosaur"}` → maps via `config/packages/bitexpert_wishlist_concierge.yaml:2` `dino→[t_shirts,caps]` → `ThemedProductFinder.php:66` channel-scoped QB (`JOIN p.channels`, `JOIN t.code`) → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
 
 **Story 2 — Budget**
 > Agent: `wishlist.optimize_for_budget {wishlistId:2, budgetCents:15000}` → `BudgetOptimizer.php:25` cheapest-first knapsack with `quantity * ChannelPricing` → `chosen:["Lunar_Echo_T_Shirt-variant-0"], total $17.03, $7 remaining` + explanation string. Human decides to increase budget.
@@ -61,7 +61,7 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 **Agent prompts (Inspector or `document.modelContext` console):**
 ```
 wishlist.create {"name":"Dino Birthday — $150","theme":"dinosaur"}
-product.search_themed {"theme":"dinosaur","limit":4}
+product.search {"theme":"dinosaur","limit":4}
 wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
 wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
 wishlist.move_to_cart {"wishlistId":2}
@@ -230,10 +230,10 @@ List recent wishlists for `FASHION_WEB`.
 }
 ```
 
-### `product.search_themed` — `readOnlyHint:true`
+### `product.search` — `readOnlyHint:true`
 ```json
 {
-  "name": "product.search_themed",
+  "name": "product.search",
   "description": "Search products for FASHION_WEB by theme and optional taxon/price filters. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. \"dinosaur\", \"gift\", \"summer\") or whose name contains the theme string. Theme is also mapped to taxons (e.g. dinosaur -> t_shirts/caps).",
   "inputSchema": {
     "type": "object",
@@ -379,8 +379,8 @@ ddev exec vendor/bin/phpunit tests/Unit/Service/BudgetOptimizerTest.php --testdo
 ```bash
 playwright-cli -s=wishlist open https://wishlist-concierge.ddev.site/en_US/ --ignore-https-errors
 playwright-cli -s=wishlist eval "await document.modelContext.getTools().then(t=>t.map(x=>x.name))"
-# → ["wishlist.list","wishlist.get","wishlist.create_themed","product.search_themed","product.get_details","wishlist.add_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
-playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search_themed'),{theme:'gift',limit:2})"
+# → ["wishlist.list","wishlist.get","wishlist.create_themed","product.search","product.get_details","wishlist.add_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
+playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search'),{theme:'gift',limit:2})"
 ```
 
 **Machine-readable contracts (verify server-side schema is in sync):**
