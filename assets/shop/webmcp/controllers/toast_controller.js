@@ -5,11 +5,20 @@ export default class extends Controller {
 
     connect() {
         window.addEventListener('webmcp:toast', this.handleToast);
+        window.addEventListener('webmcp:promotions-applied', this.handlePromotionsApplied);
     }
 
     disconnect() {
         window.removeEventListener('webmcp:toast', this.handleToast);
+        window.removeEventListener('webmcp:promotions-applied', this.handlePromotionsApplied);
     }
+
+    handlePromotionsApplied = (event) => {
+        const { promotionsApplied = [], savedFormatted = '' } = event.detail || {};
+        if (!promotionsApplied.length) return;
+        const names = promotionsApplied.map((p) => p && p.name ? p.name : p).join(', ');
+        this.show('success', `Promotions applied: ${names}${savedFormatted ? ` — saved ${savedFormatted}` : ''}`);
+    };
 
     handleToast = (event) => {
         const { type, message } = event.detail || {};

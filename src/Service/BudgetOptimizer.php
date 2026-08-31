@@ -4,20 +4,32 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
+use BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
+use Sylius\Component\Core\Calculator\ProductVariantPricesCalculatorInterface;
 use Sylius\WishlistPlugin\Entity\WishlistInterface;
 
 final readonly class BudgetOptimizer
 {
     public function __construct(
         private ChannelContextInterface $channelContext,
+        private ProductVariantPricesCalculatorInterface $productVariantPricesCalculator,
+        private EligiblePromotionsProvider $eligiblePromotionsProvider,
     ) {
     }
 
     /**
-     * @return array{chosen:string[], totalCents:int, savedCents:int, explanation:string, totalOriginal:int}
+     * @return array{
+     *     chosen:string[],
+     *     totalCents:int,
+     *     savedCents:int,
+     *     explanation:string,
+     *     totalOriginal:int,
+     *     promotionsApplied:array<int, array{code:string, name:string}>,
+     *     promotionsIgnored:bool
+     * }
      */
-    public function optimize(WishlistInterface $wishlist, int $budgetCents): array
+    public function optimize(WishlistInterface $wishlist, int $budgetCents, bool $includePromotions = true): array
     {
         $channel = $wishlist->getChannel() ?? $this->channelContext->getChannel();
         $items = [];
@@ -27,14 +39,23 @@ final readonly class BudgetOptimizer
             if (null === $variant) {
                 continue;
             }
-            $pricing = $variant->getChannelPricingForChannel($channel);
-            if (null === $pricing) {
+            try {
+                $unitOriginal = $this->productVariantPricesCalculator->calculateOriginal($variant, ['channel' => $channel]);
+            } catch (\InvalidArgumentException) {
                 continue;
             }
-            $unitPrice = $pricing->getPrice() ?? 0;
-            $unitOriginal = $pricing->getOriginalPrice() ?? $unitPrice;
             $quantity = $wp->getQuantity();
             // TODO: Use Money Value Object post-contest (Sylius Money)
+            if ($includePromotions) {
+                try {
+                    $unitPrice = $this->productVariantPricesCalculator->calculate($variant, ['channel' => $channel]);
+                } catch (\InvalidArgumentException) {
+                    $unitPrice = $unitOriginal;
+                }
+            } else {
+                // Without promotions the effective price is the pre-discount original price.
+                $unitPrice = $unitOriginal;
+            }
             $items[] = [
                 'variantCode' => $variant->getCode(),
                 'price' => $unitPrice * $quantity,
@@ -68,7 +89,19 @@ final readonly class BudgetOptimizer
 
         $saved = $totalOriginal - $total;
 
-        $explanation = $this->buildExplanation($chosen, $total, $totalOriginal, $budgetCents, count($items));
+        $promotions = $includePromotions
+            ? $this->eligiblePromotionsProvider->getActiveForChannel($channel)
+            : [];
+
+        $explanation = $this->buildExplanation(
+            $chosen,
+            $total,
+            $totalOriginal,
+            $budgetCents,
+            count($items),
+            $includePromotions,
+            count($promotions),
+        );
 
         return [
             'chosen' => $chosen,
@@ -76,10 +109,15 @@ final readonly class BudgetOptimizer
             'savedCents' => max(0, $saved),
             'totalOriginal' => $totalOriginal,
             'explanation' => $explanation,
+            'promotionsApplied' => $this->eligiblePromotionsProvider->summarize($promotions),
+            'promotionsIgnored' => !$includePromotions,
         ];
     }
 
-    private function buildExplanation(array $chosen, int $total, int $totalOriginal, int $budget, int $totalItems): string
+    /**
+     * @param string[] $chosen
+     */
+    private function buildExplanation(array $chosen, int $total, int $totalOriginal, int $budget, int $totalItems, bool $includePromotions, int $activePromotions): string
     {
         if ([] === $chosen) {
             return sprintf(
@@ -91,7 +129,15 @@ final readonly class BudgetOptimizer
 
         $remaining = $budget - $total;
         $saved = $totalOriginal - $total;
-        $promoNote = $saved > 0 ? sprintf(' You save $%.2f via catalog promotions.', $saved / 100) : '';
+        $promoNote = '';
+
+        if ($includePromotions && $saved > 0) {
+            $promoNote = sprintf(' You save $%.2f via %d active catalog promotion(s).', $saved / 100, $activePromotions);
+        } elseif (!$includePromotions) {
+            $promoNote = ' Catalog promotions excluded.';
+        } elseif ($activePromotions > 0) {
+            $promoNote = sprintf(' %d active catalog promotion(s) eligible for this channel.', $activePromotions);
+        }
 
         if ($remaining < 100) {
             return sprintf(

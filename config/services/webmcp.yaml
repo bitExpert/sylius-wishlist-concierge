@@ -40,6 +40,11 @@ services:
             $entityManager: '@doctrine.orm.entity_manager'
         tags: ['console']
 
+    BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider:
+        arguments:
+            $eligibleCatalogPromotionsProvider: '@sylius.provider.eligible_catalog_promotions'
+            $channelContext: '@sylius.context.channel'
+
     BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer:
         arguments:
             $channelContext: '@sylius.context.channel'

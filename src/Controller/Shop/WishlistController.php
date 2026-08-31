@@ -123,7 +123,8 @@ final class WishlistController extends AbstractController
         /** @var BudgetOptimizeRequest $dto */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
-        $result = $this->budgetOptimizer->optimize($wishlist, $dto->budgetCents);
+        $includePromotions = $dto->includePromotions;
+        $result = $this->budgetOptimizer->optimize($wishlist, $dto->budgetCents, $includePromotions);
 
         return $this->json([
             'wishlistId' => $id,

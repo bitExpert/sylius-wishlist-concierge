@@ -22,9 +22,32 @@ async function apiFetch(path, opts = {}) {
     });
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`API ${path} ${res.status}: ${text}`);
+        try {
+            const body = JSON.parse(text);
+            const msg = body.message || body.error || text;
+            const violations = body.violations?.length
+                ? ` (${body.violations.map((v) => v.message).join('; ')})`
+                : '';
+            throw new Error(`${msg}${violations}`);
+        } catch (e) {
+            if (e instanceof SyntaxError) {
+                throw new Error(`API ${path} ${res.status}: ${text}`);
+            }
+            throw e;
+        }
     }
     return res.json();
+}
+
+function withErrorHandling(fn, toolName) {
+    return async (input, options) => {
+        try {
+            return await fn(input, options);
+        } catch (e) {
+            const payload = { error: toolName, message: e.message || String(e) };
+            return JSON.stringify(payload, null, 2);
+        }
+    };
 }
 
 /**
@@ -43,10 +66,10 @@ const TOOLS = [
                 },
             },
             annotations: { readOnlyHint: true },
-            execute: async (input) => {
+            execute: withErrorHandling(async (input) => {
                 const data = await apiFetch('/concierge/wishlist');
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'wishlist.list'),
         },
         {
             name: 'wishlist.get',
@@ -57,10 +80,10 @@ const TOOLS = [
                 required: ['wishlistId'],
             },
             annotations: { readOnlyHint: true },
-            execute: async ({ wishlistId }) => {
+            execute: withErrorHandling(async ({ wishlistId }) => {
                 const data = await apiFetch(`/concierge/wishlist/${wishlistId}`);
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'wishlist.get'),
         },
         {
             name: 'wishlist.create_themed',
@@ -74,7 +97,7 @@ const TOOLS = [
                 },
                 required: ['name', 'theme'],
             },
-            execute: async (input) => {
+            execute: withErrorHandling(async (input) => {
                 const data = await apiFetch('/concierge/wishlist', {
                     method: 'POST',
                     body: JSON.stringify({ name: input.name, theme: input.theme, channelCode: input.channelCode || BASE_CHANNEL }),
@@ -82,7 +105,7 @@ const TOOLS = [
                 // Dispatch live UI update
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-created', { detail: data }));
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'wishlist.create_themed'),
         },
         {
             name: 'product.search_themed',
@@ -100,7 +123,7 @@ const TOOLS = [
                 required: ['theme'],
             },
             annotations: { readOnlyHint: true },
-            execute: async (input) => {
+            execute: withErrorHandling(async (input) => {
                 const params = new URLSearchParams();
                 params.set('theme', input.theme);
                 params.set('channelCode', input.channelCode || BASE_CHANNEL);
@@ -110,7 +133,7 @@ const TOOLS = [
                 if (input.taxonCodes) input.taxonCodes.forEach((c) => params.append('taxonCodes[]', c));
                 const data = await apiFetch(`/concierge/products/search?${params.toString()}`);
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'product.search_themed'),
         },
         {
             name: 'product.get_details',
@@ -121,15 +144,12 @@ const TOOLS = [
                 required: ['productCode'],
             },
             annotations: { readOnlyHint: true },
-            execute: async ({ productCode }) => {
-                // Use Shop API directly for details — channel aware
-                const res = await fetch(`/api/v2/shop/products/${productCode}?channelCode=${BASE_CHANNEL}`, {
+            execute: withErrorHandling(async ({ productCode }) => {
+                const data = await apiFetch(`/api/v2/shop/products/${productCode}?channelCode=${BASE_CHANNEL}`, {
                     headers: { Accept: 'application/ld+json' },
                 });
-                if (!res.ok) throw new Error(`Product ${productCode} not found`);
-                const data = await res.json();
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'product.get_details'),
         },
         {
             name: 'wishlist.add_item',
@@ -143,7 +163,7 @@ const TOOLS = [
                 },
                 required: ['wishlistId', 'variantCode'],
             },
-            execute: async (input, { signal }) => {
+            execute: withErrorHandling(async (input, { signal }) => {
                 if (signal?.aborted) throw new Error('Aborted');
                 const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items`, {
                     method: 'POST',
@@ -151,28 +171,31 @@ const TOOLS = [
                 });
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'wishlist.add_item'),
         },
         {
             name: 'wishlist.optimize_for_budget',
-            description: 'Optimize a wishlist for a budget (cents, USD). Returns chosen variantCodes, totalCents/savedCents and human explanation. Use before move_to_cart to stay under budget.',
+            description: 'Optimize a wishlist for a budget (cents, USD). Applies eligible Sylius catalog promotions when includePromotions is true: returns chosen variantCodes, totalCents/savedCents, the list of active promotionsApplied and a human explanation. Use before move_to_cart to stay under budget.',
             inputSchema: {
                 type: 'object',
                 properties: {
                     wishlistId: { type: 'integer' },
                     budgetCents: { type: 'integer', description: 'Budget in cents, e.g. 15000 for $150' },
-                    includePromotions: { type: 'boolean', default: true },
+                    includePromotions: { type: 'boolean', default: true, description: 'Apply eligible Sylius catalog promotions when computing the optimal set' },
                 },
                 required: ['wishlistId', 'budgetCents'],
             },
             annotations: { readOnlyHint: true },
-            execute: async (input) => {
+            execute: withErrorHandling(async (input) => {
                 const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/optimize`, {
                     method: 'POST',
                     body: JSON.stringify({ budgetCents: input.budgetCents, includePromotions: input.includePromotions ?? true }),
                 });
+                if (data.promotionsApplied?.length) {
+                    window.dispatchEvent(new CustomEvent('webmcp:promotions-applied', { detail: data }));
+                }
                 return JSON.stringify(data, null, 2);
-            },
+            }, 'wishlist.optimize_for_budget'),
         },
         {
             name: 'wishlist.move_to_cart',
@@ -185,7 +208,7 @@ const TOOLS = [
                 },
                 required: ['wishlistId'],
             },
-            execute: async (input, { signal }) => {
+            execute: withErrorHandling(async (input, { signal }) => {
                 if (signal?.aborted) throw new Error('Aborted');
                 const preview = await apiFetch(`/concierge/wishlist/${input.wishlistId}`);
                 const items = preview.wishlist.items || [];
@@ -203,7 +226,7 @@ const TOOLS = [
                 window.dispatchEvent(new CustomEvent('webmcp:cart-created', { detail: data }));
                 // Navigate hint
                 return JSON.stringify({ ...data, message: 'Cart created. Visit ' + data.cartUrl + ' with token ' + data.cartToken }, null, 2);
-            },
+            }, 'wishlist.move_to_cart'),
         },
     ];
 
@@ -211,6 +234,9 @@ async function registerAll() {
     if (!('modelContext' in document)) {
         console.warn('[WebMCP] document.modelContext not available — WebMCP disabled. Enable chrome://flags/#enable-webmcp-testing');
         updateStatus('unavailable', 'WebMCP unavailable — enable flag');
+        window.dispatchEvent(new CustomEvent('webmcp:toast', {
+            detail: { type: 'error', message: 'WebMCP unavailable — enable chrome://flags/#enable-webmcp-testing' },
+        }));
         return;
     }
 
@@ -230,9 +256,14 @@ async function registerAll() {
     const succeeded = results.filter((r) => r.value?.ok).length;
     const failed = results.length - succeeded;
     if (failed > 0) {
-        const failedNames = results.filter((r) => !r.value?.ok).map((r) => r.value?.name).join(', ');
+        const failedTools = results.filter((r) => !r.value?.ok);
+        const failedNames = failedTools.map((r) => r.value?.name).join(', ');
         updateStatus('error', `Registered ${succeeded}/${results.length} — failed: ${failedNames}`);
-        console.warn('[WebMCP] failed tools', failedNames);
+        const failDetail = failedTools
+            .map((r) => `${r.value?.name}: ${r.value?.error?.message || r.value?.error || 'unknown'}`)
+            .join('; ');
+        window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'error', message: `WebMCP registration — ${failDetail}` } }));
+        console.warn('[WebMCP] failed tools', failedTools);
     } else {
         updateStatus('ready', `${succeeded} tools ready`);
         window.dispatchEvent(new CustomEvent('webmcp:ready', { detail: { count: succeeded } }));

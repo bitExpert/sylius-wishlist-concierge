@@ -153,7 +153,11 @@ export default class extends Controller {
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
             if (parsed.error) {
-                window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'error', message: parsed.error } }));
+                const message = parsed.message || parsed.error;
+                const violations = Array.isArray(parsed.violations) && parsed.violations.length > 0
+                    ? ` (${parsed.violations.map((v) => v.message).join('; ')})`
+                    : '';
+                window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'error', message: `${message}${violations}` } }));
             } else {
                 const summary = this.summarizeResult(toolName, parsed);
                 window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'success', message: summary } }));

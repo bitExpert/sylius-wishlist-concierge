@@ -131,7 +131,9 @@ src/Service/BudgetOptimizer.php                     → int cents + quantity
 templates/shop/webmcp/status.html.twig              → {{ 'bitexpert_wishlist_concierge.shop.status.label'|trans }}
 translations/messages.en.yaml                       → EN keys
 tests/Unit/Service/BudgetOptimizerTest.php          → 3 cases, phpunit
-assets/shop/webmcp/registry.js                      → Promise.allSettled race fix
+assets/shop/webmcp/registry.js                      → Promise.allSettled race fix, apiFetch parses {error,message,violations}, withErrorHandling wrapper per tool
+assets/shop/webmcp/controllers/toast_controller.js  → listens webmcp:toast, renders Bootstrap toast (error/success/info)
+assets/shop/webmcp/controllers/toolbox_controller.js → shows toast with parsed.message + violations on tool error
 ```
 
 ## WebMCP Tool Reference — Full JSON Schema Inline
@@ -350,7 +352,7 @@ Channel default `FASHION_WEB` via `ChannelContext`; override per-call `?channelC
 ## Roadmap
 
 * `Money` Value Object (`sylius/money` post-contest, currently `int` cents with `TODO` at `BudgetOptimizer.php:25`)
-* `CatalogPromotion` discount preview in `optimize` (currently `saved = totalOriginal - total`)
+* ✅ `CatalogPromotion` integration in `optimize` — `BudgetOptimizer` uses Sylius's `ProductVariantPricesCalculator` and reports active `CatalogPromotion`s via `EligiblePromotionsProvider` (`src/Service/Promotion/EligiblePromotionsProvider.php`). Honors the `includePromotions` flag (when disabled, the pre-discount original price is used, so promo savings are not counted).
 * Shared CMS story page generation (`sylius/cms-plugin` `Page` with `ProductsCarousel` from `Wishlist`)
 
 ## License
