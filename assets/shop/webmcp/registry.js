@@ -14,6 +14,10 @@ function getBaseUrl() {
     return `/${l}`;
 }
 
+function getApiUrl(path) {
+    return `${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 async function apiFetch(path, opts = {}) {
     const url = `${getBaseUrl()}${path}`;
     const res = await fetch(url, {
@@ -145,9 +149,15 @@ const TOOLS = [
             },
             annotations: { readOnlyHint: true },
             execute: withErrorHandling(async ({ productCode }) => {
-                const data = await apiFetch(`/api/v2/shop/products/${productCode}?channelCode=${BASE_CHANNEL}`, {
+                const url = getApiUrl(`/api/v2/shop/products/${productCode}?channelCode=${BASE_CHANNEL}`);
+                const res = await fetch(url, {
                     headers: { Accept: 'application/ld+json' },
                 });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`API ${res.status}: ${text}`);
+                }
+                const data = await res.json();
                 return JSON.stringify(data, null, 2);
             }, 'product.get_details'),
         },
