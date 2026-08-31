@@ -1,5 +1,13 @@
 <?php
 
+/*
+ * This file is part of the Sylius Wishlist Concierge package.
+ *
+ * (c) bitExpert AG
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
@@ -9,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 /**
- * Centralises the JSON error envelope used across the WebMCP tool API so every
+ * Centralizes the JSON error envelope used across the WebMCP tool API so every
  * failure — validation, not-found, invalid body — is shaped consistently
  * ({error, message, violations?}) and the front-end can rely on one contract.
  */

@@ -1,5 +1,13 @@
 <?php
 
+/*
+ * This file is part of the Sylius Wishlist Concierge package.
+ *
+ * (c) bitExpert AG
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Security;
@@ -25,7 +33,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * declared input DTO and validates it against the documented constraints.
  * A failed contract yields a single, deterministic 422 response carrying the
  * exact validation errors, so the "structured contract" promised by WebMCP is
- * honoured regardless of which client (browser, script, test) invokes it.
+ * honored regardless of which client (browser, script, test) invokes it.
  */
 final class ToolContractValidator
 {
