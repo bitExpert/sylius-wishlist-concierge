@@ -15,6 +15,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Security;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
@@ -45,6 +46,7 @@ final class ToolContractValidator
     private const TOOL_CONTRACTS = [
         'bitexpert_concierge_wishlist_create' => WishlistCreateRequest::class,
         'bitexpert_concierge_wishlist_add_item' => WishlistAddItemRequest::class,
+        'bitexpert_concierge_wishlist_bulk_add' => WishlistBulkAddRequest::class,
         'bitexpert_concierge_wishlist_remove_item_post' => WishlistRemoveItemRequest::class,
         'bitexpert_concierge_wishlist_optimize' => BudgetOptimizeRequest::class,
         'bitexpert_concierge_wishlist_move_to_cart' => MoveToCartRequest::class,

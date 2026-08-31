@@ -13,7 +13,9 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
@@ -113,6 +115,35 @@ final class WishlistController extends AbstractController
         }
 
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
+    }
+
+    #[Route('/concierge/wishlist/{id}/items/bulk', name: 'bitexpert_concierge_wishlist_bulk_add', methods: ['POST'])]
+    public function bulkAddItems(Request $request, int $id): JsonResponse
+    {
+        $wishlist = $this->wishlistRepository->find($id);
+        if (null === $wishlist) {
+            return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $this->accessChecker->assertCanModify($wishlist);
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
+        }
+
+        /** @var WishlistBulkAddRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+
+        $results = $this->wishlistManager->bulkAddItemsFromRequest($wishlist, $dto);
+        $this->entityManager->persist($wishlist);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'wishlistId' => $id,
+            'results' => $results,
+            'totalAdded' => count(array_filter($results, fn($r) => $r['status'] === 'added')),
+            'totalSkipped' => count(array_filter($results, fn($r) => $r['status'] === 'skipped')),
+        ]);
     }
 
     #[Route('/concierge/wishlist/{id}/items/{itemId}', name: 'bitexpert_concierge_wishlist_remove_item', methods: ['DELETE'])]

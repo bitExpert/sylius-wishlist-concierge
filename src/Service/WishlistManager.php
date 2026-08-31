@@ -22,6 +22,7 @@ use Sylius\WishlistPlugin\Factory\WishlistFactoryInterface;
 use Sylius\WishlistPlugin\Factory\WishlistProductFactoryInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 
 final readonly class WishlistManager
 {
@@ -173,5 +174,85 @@ final readonly class WishlistManager
             return $user;
         }
         return null;
+    }
+
+    /**
+     * @return array<int, array{variantCode: string, quantity: int, status: 'added'|'skipped', reason?: string}>
+     */
+    public function bulkAddItems(WishlistInterface $wishlist, array $items): array
+    {
+        $results = [];
+        
+        foreach ($items as $item) {
+            $variantCode = $item['variantCode'];
+            $quantity = $item['quantity'] ?? 1;
+            
+            $variant = $this->variantRepository->findOneBy(['code' => $variantCode]);
+            
+            if (null === $variant) {
+                $results[] = [
+                    'variantCode' => $variantCode,
+                    'quantity' => $quantity,
+                    'status' => 'skipped',
+                    'reason' => sprintf('Variant "%s" not found', $variantCode),
+                ];
+                continue;
+            }
+            
+            if ($wishlist->hasProductVariant($variant)) {
+                foreach ($wishlist->getWishlistProducts() as $wp) {
+                    if ($wp->getVariant()?->getCode() === $variantCode) {
+                        $wp->setQuantity($wp->getQuantity() + $quantity);
+                        $results[] = [
+                            'variantCode' => $variantCode,
+                            'quantity' => $quantity,
+                            'status' => 'skipped',
+                            'reason' => sprintf('Variant "%s" already in wishlist, quantity updated', $variantCode),
+                        ];
+                        continue 2;
+                    }
+                }
+            }
+            
+            $product = $variant->getProduct();
+            if (null === $product) {
+                $results[] = [
+                    'variantCode' => $variantCode,
+                    'quantity' => $quantity,
+                    'status' => 'skipped',
+                    'reason' => sprintf('Variant "%s" has no product', $variantCode),
+                ];
+                continue;
+            }
+            
+            /** @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct */
+            $wishlistProduct = $this->wishlistProductFactory->createNew();
+            $wishlistProduct->setProduct($product);
+            $wishlistProduct->setVariant($variant);
+            $wishlistProduct->setQuantity($quantity);
+            
+            $wishlist->addWishlistProduct($wishlistProduct);
+            
+            $results[] = [
+                'variantCode' => $variantCode,
+                'quantity' => $quantity,
+                'status' => 'added',
+            ];
+        }
+        
+        return $results;
+    }
+
+    public function bulkAddItemsFromRequest(WishlistInterface $wishlist, WishlistBulkAddRequest $request): array
+    {
+        $items = [];
+        foreach ($request->items as $item) {
+            $items[] = [
+                'variantCode' => $item->variantCode,
+                'quantity' => $item->quantity,
+            ];
+        }
+        
+        return $this->bulkAddItems($wishlist, $items);
     }
 }

@@ -1,6 +1,6 @@
 /**
  * WebMCP Registry — Wishlist Concierge
- * Registers 9 imperative tools via document.modelContext.registerTool
+ * Registers 10 imperative tools via document.modelContext.registerTool
  * See https://webmachinelearning.github.io/webmcp/
  */
 const BASE_CHANNEL = 'FASHION_WEB';
@@ -177,6 +177,37 @@ const TOOLS = [
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
                 return JSON.stringify(data, null, 2);
             }, 'wishlist.add_item'),
+        },
+        {
+            name: 'wishlist.bulk_add',
+            description: 'Add multiple product variants to a wishlist in one call. Input is an array of {variantCode, quantity} objects.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    wishlistId: { type: 'integer' },
+                    items: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                variantCode: { type: 'string', description: 'Variant code like T_SHIRT_VARIANT' },
+                                quantity: { type: 'integer', default: 1, minimum: 1 },
+                            },
+                            required: ['variantCode'],
+                        },
+                    },
+                },
+                required: ['wishlistId', 'items'],
+            },
+            execute: withErrorHandling(async (input, { signal }) => {
+                if (signal?.aborted) throw new Error('Aborted');
+                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/bulk`, {
+                    method: 'POST',
+                    body: JSON.stringify({ items: input.items }),
+                });
+                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
+                return JSON.stringify(data, null, 2);
+            }, 'wishlist.bulk_add'),
         },
         {
             name: 'wishlist.remove_item',
