@@ -1,4 +1,32 @@
-<div id="webmcp-status" class="bg-light border-top py-2 text-center small text-muted" data-webmcp-status>
-    <span class="webmcp-indicator" data-webmcp-indicator>{{ 'bitexpert_wishlist_concierge.shop.status.webmcp'|trans }} <span class="badge bg-secondary">{{ 'bitexpert_wishlist_concierge.shop.status.checking'|trans }}</span></span>
-    <span class="ms-2">{{ 'bitexpert_wishlist_concierge.shop.status.label'|trans }}</span>
+<div data-controller="webmcp--toolbox">
+    <div id="webmcp-status" class="bg-light border-top py-2 text-center small text-muted" data-webmcp-status>
+        <span class="webmcp-indicator" data-webmcp-indicator>{{ 'bitexpert_wishlist_concierge.shop.status.webmcp'|trans }} <span class="badge bg-secondary" data-action="click->webmcp--toolbox#open" role="button" tabindex="0" style="cursor: pointer;" title="{{ 'bitexpert_wishlist_concierge.shop.toolbox.button_title'|trans }}">{{ 'bitexpert_wishlist_concierge.shop.status.checking'|trans }}</span></span>
+        <span class="ms-2">{{ 'bitexpert_wishlist_concierge.shop.status.label'|trans }}</span>
+    </div>
+
+    <div class="modal fade" data-webmcp--toolbox-target="modal" tabindex="-1" aria-labelledby="webmcpToolboxLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="webmcpToolboxLabel">
+                        {{ 'bitexpert_wishlist_concierge.shop.toolbox.title'|trans }}
+                    </h5>
+                    <button type="button" class="btn-close" data-action="click->webmcp--toolbox#close" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" data-webmcp--toolbox-target="body">
+                    <div class="text-center py-3" data-webmcp--toolbox-target="loader">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">{{ 'bitexpert_wishlist_concierge.shop.toolbox.loading'|trans }}</span>
+                        </div>
+                        <span class="ms-2 text-muted small">{{ 'bitexpert_wishlist_concierge.shop.toolbox.loading'|trans }}</span>
+                    </div>
+                </div>
+                <div class="modal-footer" data-webmcp--toolbox-target="footer" style="display:none;">
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="click->webmcp--toolbox#close">
+                        {{ 'bitexpert_wishlist_concierge.shop.toolbox.close'|trans }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

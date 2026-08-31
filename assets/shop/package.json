@@ -1,0 +1,29 @@
+{
+  "name": "@bitexpert/wishlist-concierge-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wishlist Concierge – WebMCP toolbox controllers",
+  "symfony": {
+    "controllers": {
+      "webmcp--toolbox": {
+        "main": "webmcp/controllers/toolbox_controller.js",
+        "name": "webmcp--toolbox",
+        "webpackMode": "lazy",
+        "fetch": "lazy",
+        "enabled": true
+      },
+      "webmcp--toast": {
+        "main": "webmcp/controllers/toast_controller.js",
+        "name": "webmcp--toast",
+        "webpackMode": "lazy",
+        "fetch": "lazy",
+        "enabled": true
+      }
+    }
+  },
+  "peerDependencies": {
+    "@hotwired/stimulus": "^3.0.0",
+    "@symfony/stimulus-bridge": "^3.2.0"
+  }
+}

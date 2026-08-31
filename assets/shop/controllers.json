@@ -1,13 +1,15 @@
 {
-  "controllers": [
-    {
-      "name": "webmcp--toolbox",
-      "path": "./webmcp/controllers/toolbox_controller.js"
-    },
-    {
-      "name": "webmcp--toast",
-      "path": "./webmcp/controllers/toast_controller.js"
+  "controllers": {
+    "@bitexpert/wishlist-concierge-plugin": {
+      "webmcp--toolbox": {
+        "enabled": true,
+        "fetch": "lazy"
+      },
+      "webmcp--toast": {
+        "enabled": true,
+        "fetch": "lazy"
+      }
     }
-  ],
+  },
   "entrypoints": []
 }

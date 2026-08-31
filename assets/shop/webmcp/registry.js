@@ -244,7 +244,11 @@ async function registerAll() {
     const results = await Promise.allSettled(
         TOOLS.map(async (tool) => {
             try {
-                await document.modelContext.registerTool(tool);
+                const registered = await document.modelContext.registerTool(tool);
+                // Share RegisteredTool handles via window: registry.js is duplicated
+                // into multiple webpack chunks (entrypoint + lazy Stimulus chunks), so
+                // module-level state would NOT be shared with the toolbox controller.
+                (window.__webmcpTools ??= {})[tool.name] = registered;
                 console.log('[WebMCP] registered', tool.name);
                 return { name: tool.name, ok: true };
             } catch (e) {
@@ -284,12 +288,8 @@ function updateStatus(state, text) {
     el.className = 'badge ' + (state === 'ready' ? 'bg-success' : state === 'error' ? 'bg-danger' : state === 'unavailable' ? 'bg-warning text-dark' : 'bg-secondary');
 }
 
-// Auto-register when DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', registerAll);
-} else {
-    // slight delay to ensure TestApplication scripts loaded
-    setTimeout(registerAll, 100);
-}
+// Registration is triggered by the shop entrypoint (entrypoint.js) — not here —
+// so that importing TOOLS from this module (e.g. by the Stimulus toolbox controller)
+// does not cause registration to run at module-load time.
 
 export { registerAll, TOOLS };

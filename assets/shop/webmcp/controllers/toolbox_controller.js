@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { TOOLS } from '../registry';
+import { TOOLS } from '../registry.js';
 
 export default class extends Controller {
     static targets = ['modal', 'body', 'loader', 'footer'];
@@ -146,10 +146,21 @@ export default class extends Controller {
         if (runButton) runButton.disabled = true;
 
         try {
-            if (!document.modelContext) {
-                throw new Error('WebMCP not available — enable chrome://flags/#enable-webmcp-testing');
+            const tool = TOOLS.find((t) => t.name === toolName);
+            if (!tool) {
+                throw new Error(`Unknown tool "${toolName}"`);
             }
-            const result = await document.modelContext.executeTool(toolName, payload);
+            // Hybrid execution: prefer the real WebMCP runtime path using the
+            // RegisteredTool handle captured during registration, but fall back
+            // to invoking the tool's execute() directly when WebMCP is
+            // unavailable or the tool failed to register.
+            const registered = window.__webmcpTools?.[toolName];
+            let result;
+            if (registered && document.modelContext?.executeTool) {
+                result = await document.modelContext.executeTool(registered, payload);
+            } else {
+                result = await tool.execute(payload, {});
+            }
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
             if (parsed.error) {
@@ -171,8 +182,8 @@ export default class extends Controller {
     }
 
     summarizeResult(toolName, result) {
-        if (toolName === 'wishlist.list' && Array.isArray(result)) {
-            return `Found ${result.length} wishlist(s)`;
+        if (toolName === 'wishlist.list' && Array.isArray(result.wishlists)) {
+            return `Found ${result.wishlists.length} wishlist(s)`;
         }
         if (toolName === 'wishlist.get' && result.wishlist) {
             return `Wishlist "${result.wishlist.name}" — ${(result.wishlist.items || []).length} item(s)`;
@@ -180,8 +191,8 @@ export default class extends Controller {
         if (toolName === 'wishlist.create_themed' && result.id) {
             return `Created wishlist "${result.name}" (id: ${result.id})`;
         }
-        if (toolName === 'product.search_themed' && Array.isArray(result)) {
-            return `Found ${result.length} product(s)`;
+        if (toolName === 'product.search_themed' && Array.isArray(result.products)) {
+            return `Found ${result.count ?? result.products.length} product(s)`;
         }
         if (result.cartUrl) {
             return `Cart created — ${result.cartUrl}`;
