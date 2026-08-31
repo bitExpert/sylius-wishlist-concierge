@@ -24,6 +24,8 @@ use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistDeleteRequest;
+use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class WishlistManager
 {
@@ -35,6 +37,7 @@ final readonly class WishlistManager
         private ChannelContextInterface $channelContext,
         private ChannelRepositoryInterface $channelRepository,
         private TokenStorageInterface $tokenStorage,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -269,5 +272,15 @@ final readonly class WishlistManager
     public function clearAllItemsFromRequest(WishlistInterface $wishlist, WishlistClearRequest $request): WishlistInterface
     {
         return $this->clearAllItems($wishlist);
+    }
+
+    public function deleteWishlist(WishlistInterface $wishlist): void
+    {
+        $this->entityManager->remove($wishlist);
+    }
+
+    public function deleteWishlistFromRequest(WishlistInterface $wishlist, WishlistDeleteRequest $request): void
+    {
+        $this->deleteWishlist($wishlist);
     }
 }

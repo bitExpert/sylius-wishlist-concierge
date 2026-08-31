@@ -1,6 +1,6 @@
 /**
  * WebMCP Registry — Wishlist Concierge
- * Registers 11 imperative tools via document.modelContext.registerTool
+ * Registers 12 imperative tools via document.modelContext.registerTool
  * See https://webmachinelearning.github.io/webmcp/
  */
 const BASE_CHANNEL = 'FASHION_WEB';
@@ -228,6 +228,35 @@ const TOOLS = [
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
                 return JSON.stringify(data, null, 2);
             }, 'wishlist.clear'),
+        },
+        {
+            name: 'wishlist.delete',
+            description: 'Delete a wishlist permanently. A confirmation dialog is shown before the request.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    wishlistId: { type: 'integer' },
+                },
+                required: ['wishlistId'],
+            },
+            execute: withErrorHandling(async (input, { signal }) => {
+                if (signal?.aborted) throw new Error('Aborted');
+
+                // Confirmation dialog (required by user)
+                if (!window.confirm('Are you sure you want to permanently delete this wishlist? This cannot be undone.')) {
+                    return JSON.stringify({ canceled: true, reason: 'User declined confirmation' }, null, 2);
+                }
+
+                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({}),
+                });
+
+                // Emit ONLY the dedicated event
+                window.dispatchEvent(new CustomEvent('webmcp:wishlist-deleted', { detail: data }));
+
+                return JSON.stringify(data, null, 2);
+            }, 'wishlist.delete'),
         },
         {
             name: 'wishlist.remove_item',

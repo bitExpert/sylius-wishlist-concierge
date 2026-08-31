@@ -18,6 +18,7 @@ use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistDeleteRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
@@ -88,6 +89,29 @@ final class WishlistController extends AbstractController
         $arr = array_map(fn($w) => $this->wishlistManager->toArray($w), $wishlists);
 
         return $this->json(['wishlists' => $arr, 'channelCode' => $channel->getCode()]);
+    }
+
+    #[Route('/concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_delete', methods: ['DELETE'])]
+    public function delete(Request $request, int $id): JsonResponse
+    {
+        $wishlist = $this->wishlistRepository->find($id);
+        if (null === $wishlist) {
+            return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $this->accessChecker->assertCanModify($wishlist);
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
+        }
+
+        /** @var WishlistDeleteRequest $dto */
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+
+        $this->wishlistManager->deleteWishlist($wishlist);
+        $this->entityManager->flush();
+
+        return $this->json(['deleted' => true, 'wishlistId' => $id]);
     }
 
     #[Route('/concierge/wishlist/{id}/items', name: 'bitexpert_concierge_wishlist_add_item', methods: ['POST'])]
