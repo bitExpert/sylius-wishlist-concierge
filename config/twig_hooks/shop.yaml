@@ -1,6 +1,12 @@
 sylius_twig_hooks:
     hooks:
         'sylius_shop.base.footer.content':
+            webmcp_toolbox:
+                template: '@BitExpertSyliusWishlistConciergePlugin/shop/webmcp/_toolbox.html.twig'
+                priority: -90
             webmcp_status:
                 template: '@BitExpertSyliusWishlistConciergePlugin/shop/webmcp/status.html.twig'
                 priority: -100
+            webmcp_toast:
+                template: '@BitExpertSyliusWishlistConciergePlugin/shop/webmcp/_toast.html.twig'
+                priority: -110

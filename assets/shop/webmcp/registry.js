@@ -27,14 +27,12 @@ async function apiFetch(path, opts = {}) {
     return res.json();
 }
 
-async function registerAll() {
-    if (!('modelContext' in document)) {
-        console.warn('[WebMCP] document.modelContext not available — WebMCP disabled. Enable chrome://flags/#enable-webmcp-testing');
-        updateStatus('unavailable', 'WebMCP unavailable — enable flag');
-        return;
-    }
-
-    const tools = [
+/**
+ * The full catalogue of WebMCP tools registered with the runtime.
+ * Exported so the Discoverability UI ("WebMCP toolbox") can list and run
+ * the tools from a single source of truth, without duplicating definitions.
+ */
+const TOOLS = [
         {
             name: 'wishlist.list',
             description: 'List recent wishlists for the current channel (FASHION_WEB, en_US). Use to discover existing wishlists before creating a new themed one.',
@@ -209,9 +207,16 @@ async function registerAll() {
         },
     ];
 
+async function registerAll() {
+    if (!('modelContext' in document)) {
+        console.warn('[WebMCP] document.modelContext not available — WebMCP disabled. Enable chrome://flags/#enable-webmcp-testing');
+        updateStatus('unavailable', 'WebMCP unavailable — enable flag');
+        return;
+    }
+
     // Use Promise.all to avoid race — ensures status only after all registrations settle
     const results = await Promise.allSettled(
-        tools.map(async (tool) => {
+        TOOLS.map(async (tool) => {
             try {
                 await document.modelContext.registerTool(tool);
                 console.log('[WebMCP] registered', tool.name);
@@ -256,4 +261,4 @@ if (document.readyState === 'loading') {
     setTimeout(registerAll, 100);
 }
 
-export { registerAll };
+export { registerAll, TOOLS };

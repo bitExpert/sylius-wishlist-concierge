@@ -1,4 +1,13 @@
 {
-  "controllers": [],
+  "controllers": [
+    {
+      "name": "webmcp--toolbox",
+      "path": "./webmcp/controllers/toolbox_controller.js"
+    },
+    {
+      "name": "webmcp--toast",
+      "path": "./webmcp/controllers/toast_controller.js"
+    }
+  ],
   "entrypoints": []
 }

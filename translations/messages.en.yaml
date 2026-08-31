@@ -7,3 +7,9 @@ bitexpert_wishlist_concierge:
             ready: '%count% tools ready'
             error: 'Registration failed'
             unavailable: 'WebMCP unavailable — enable flag'
+        toolbox:
+            button: 'Toolbox'
+            button_title: 'Open WebMCP toolbox to browse and run tools'
+            title: 'WebMCP Toolbox'
+            loading: 'Loading tools…'
+            close: 'Close'
