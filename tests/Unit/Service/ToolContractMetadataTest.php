@@ -34,9 +34,9 @@ final class ToolContractMetadataTest extends TestCase
         self::assertNull($this->metadata->contract('does.not.exist'));
     }
 
-    public function testCreateThemedContractDeclaresRequiredNameAndTheme(): void
+    public function testCreateContractDeclaresRequiredNameAndTheme(): void
     {
-        $contract = $this->metadata->contract('wishlist.create_themed');
+        $contract = $this->metadata->contract('wishlist.create');
 
         self::assertSame('object', $contract['inputSchema']['type']);
         self::assertSame(['name', 'theme'], $contract['inputSchema']['required']);

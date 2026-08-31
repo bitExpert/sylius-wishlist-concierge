@@ -19,7 +19,7 @@
 > **Contest snippet required by judges** — this repo contains `document.modelContext.registerTool` (see `assets/shop/webmcp/registry.js:37`):
 > ```js
 > await document.modelContext.registerTool({
->   name: "wishlist.create_themed",
+>   name: "wishlist.create",
 >   description: "Create a new themed wishlist for FASHION_WEB",
 >   inputSchema: { type: "object", properties: { name:{type:"string"}, theme:{type:"string"}, channelCode:{type:"string", default:"FASHION_WEB"} }, required:["name","theme"] },
 >   execute: async (input) => fetch(`/en_US/concierge/wishlist`, {method:"POST", body: JSON.stringify(input)}).then(r=>r.json()).then(j=>JSON.stringify(j,null,2))
@@ -60,7 +60,7 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 
 **Agent prompts (Inspector or `document.modelContext` console):**
 ```
-wishlist.create_themed {"name":"Dino Birthday — $150","theme":"dinosaur"}
+wishlist.create {"name":"Dino Birthday — $150","theme":"dinosaur"}
 product.search_themed {"theme":"dinosaur","limit":4}
 wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
 wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
@@ -211,10 +211,10 @@ List recent wishlists for `FASHION_WEB`.
 }
 ```
 
-### `wishlist.create_themed`
+### `wishlist.create`
 ```json
 {
-  "name": "wishlist.create_themed",
+  "name": "wishlist.create",
   "description": "Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like \"Dino Birthday — $150\".",
   "inputSchema": {
     "type": "object",

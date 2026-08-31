@@ -86,7 +86,7 @@ const TOOLS = [
             }, 'wishlist.get'),
         },
         {
-            name: 'wishlist.create_themed',
+            name: 'wishlist.create',
             description: 'Create a new themed wishlist for FASHION_WEB. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Dino Birthday — $150".',
             inputSchema: {
                 type: 'object',
@@ -105,7 +105,7 @@ const TOOLS = [
                 // Dispatch live UI update
                 window.dispatchEvent(new CustomEvent('webmcp:wishlist-created', { detail: data }));
                 return JSON.stringify(data, null, 2);
-            }, 'wishlist.create_themed'),
+            }, 'wishlist.create'),
         },
         {
             name: 'product.search_themed',

@@ -188,7 +188,7 @@ export default class extends Controller {
         if (toolName === 'wishlist.get' && result.wishlist) {
             return `Wishlist "${result.wishlist.name}" — ${(result.wishlist.items || []).length} item(s)`;
         }
-        if (toolName === 'wishlist.create_themed' && result.id) {
+        if (toolName === 'wishlist.create' && result.id) {
             return `Created wishlist "${result.name}" (id: ${result.id})`;
         }
         if (toolName === 'product.search_themed' && Array.isArray(result.products)) {

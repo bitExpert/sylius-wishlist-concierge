@@ -27,7 +27,7 @@ final class ToolContractMetadata
      * @var array<string, class-string>
      */
     public const TOOLS = [
-        'wishlist.create_themed' => WishlistCreateRequest::class,
+        'wishlist.create' => WishlistCreateRequest::class,
         'wishlist.add_item' => WishlistAddItemRequest::class,
         'wishlist.optimize_for_budget' => BudgetOptimizeRequest::class,
         'wishlist.move_to_cart' => MoveToCartRequest::class,
