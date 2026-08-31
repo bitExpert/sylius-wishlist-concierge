@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://symfony.com/schema/dic/services
+        https://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <defaults autowire="true" autoconfigure="true" public="false" />
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator">
+            <argument type="service" id="validator" />
+            <argument type="service" id="serializer" />
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
+            <argument type="service" id="logger" />
+            <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="16" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata">
+            <argument type="service" id="validator.mapping.class_metadata_factory" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController"
+                 public="true">
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata" />
+            <tag name="controller.service_arguments" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder">
+            <argument type="service" id="sylius.repository.product" />
+            <argument type="service" id="sylius.repository.channel" />
+            <argument type="service" id="sylius.context.channel" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Command\ConciergeTagsSetupCommand">
+            <argument type="service" id="sylius.repository.product_attribute" />
+            <argument type="service" id="sylius.repository.product_attribute_value" />
+            <argument type="service" id="sylius.repository.product" />
+            <argument type="service" id="doctrine.orm.entity_manager" />
+            <tag name="console" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider">
+            <argument type="service" id="sylius.provider.eligible_catalog_promotions" />
+            <argument type="service" id="sylius.context.channel" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer">
+            <argument type="service" id="sylius.context.channel" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager">
+            <argument type="service" id="sylius_wishlist_plugin.factory.wishlist" />
+            <argument type="service" id="sylius_wishlist_plugin.repository.wishlist" />
+            <argument type="service" id="sylius_wishlist_plugin.factory.wishlist_product" />
+            <argument type="service" id="sylius.repository.product_variant" />
+            <argument type="service" id="sylius.context.channel" />
+            <argument type="service" id="sylius.repository.channel" />
+            <argument type="service" id="security.token_storage" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker">
+            <argument type="service" id="security.helper" />
+            <argument type="service" id="sylius_wishlist_plugin.resolver.wishlist_cookie_token_resolver" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController"
+                 public="true">
+            <tag name="controller.service_arguments" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController"
+                 public="true">
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager" />
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer" />
+            <argument type="service" id="sylius_wishlist_plugin.repository.wishlist" />
+            <argument type="service" id="sylius.context.channel" />
+            <argument type="service" id="doctrine.orm.entity_manager" />
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker" />
+            <tag name="controller.service_arguments" />
+        </service>
+
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController"
+                 public="true">
+            <argument type="service" id="sylius_wishlist_plugin.repository.wishlist" />
+            <argument type="service" id="sylius.context.channel" />
+            <argument type="service" id="doctrine.orm.entity_manager" />
+            <argument type="service" id="sylius.factory.order" />
+            <argument type="service" id="sylius.factory.order_item" />
+            <argument type="service" id="sylius.modifier.order_item_quantity" />
+            <argument type="service" id="sylius.order_processing.order_processor" />
+            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker" />
+            <tag name="controller.service_arguments" />
+        </service>
+    </services>
+</container>
