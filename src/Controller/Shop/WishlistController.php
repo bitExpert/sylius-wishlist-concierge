@@ -62,7 +62,12 @@ final class WishlistController extends AbstractController
         /** @var WishlistCreateRequest $dto */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
+        $existingToken = $this->cookieTokenResolver->resolve();
         $wishlist = $this->wishlistManager->createThemed($dto->name, $dto->theme, null);
+        if ($existingToken !== '' && null === $wishlist->getShopUser()) {
+            $wishlist->setToken($existingToken);
+        }
+
         $this->entityManager->persist($wishlist);
         $this->entityManager->flush();
 
@@ -70,9 +75,10 @@ final class WishlistController extends AbstractController
             'wishlist' => $this->wishlistManager->toArray($wishlist),
         ], Response::HTTP_CREATED);
 
+        // Only set the cookie if there wasn't an existing token (first anonymous wishlist).
         // Anonymous wishlists are accessed via the cookie token, mirroring the
         // Sylius WishlistPlugin flow (shared cookie name = interchangeable).
-        if (null === $wishlist->getShopUser()) {
+        if (null === $wishlist->getShopUser() && $existingToken === '') {
             $response->headers->setCookie(new Cookie(
                 'wishlist_cookie_token',
                 $wishlist->getToken(),
