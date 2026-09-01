@@ -109,25 +109,30 @@ The `vendor/sylius/test-application` provides a fully-featured Sylius demo store
 
 ## 7. WebMCP Tools
 
-The plugin exposes **8 imperative tools** for AI agents:
+The plugin exposes **12 imperative tools** for AI agents:
 
 | Tool                           | Description                         | `readOnlyHint`  |
 |--------------------------------|-------------------------------------|-----------------|
 | `wishlist.list`                | List recent wishlists               | ✅              |
 | `wishlist.get`                 | Get wishlist details                | ✅              |
 | `wishlist.create`              | Create a new themed wishlist        | ❌              |
+| `wishlist.delete`              | Delete a wishlist permanently       | ❌              |
 | `wishlist.add_item`            | Add product variant to wishlist     | ❌              |
+| `wishlist.bulk_add`            | Add multiple variants in one call   | ❌              |
+| `wishlist.clear`               | Remove all items from a wishlist    | ❌              |
 | `wishlist.remove_item`         | Remove item from wishlist           | ❌              |
 | `product.search`               | Search products by theme            | ✅              |
 | `product.get_details`          | Get product details                 | ✅              |
-| `wishlist.optimize_for_budget` | Optimize for budget with promotions | ❌              |
+| `wishlist.optimize_for_budget` | Optimize for budget with promotions | ✅              |
 | `wishlist.move_to_cart`        | Move items to cart                  | ❌              |
 
-**Note:** 9 tools defined in `registry.js`.
+**Note:** 12 tools defined in `registry.js`.
 
 ### Tool registration
-- Single source of truth: `assets/shop/webmcp/registry.js`
-- Tools registered via `document.modelContext.registerTool()` at runtime
+- Single source of truth: the `#[ModelContextTool]` attribute on each shop controller method (name, description, `dtoClass`, `pathParams`, annotations), plus the Symfony route looked up by `routeName`
+- Routes are defined explicitly in `config/routes/shop.yaml` (no `#[Route]` attributes, no wildcard import); the host app imports the bundle routes with a `/{_locale}` prefix, so paths in `shop.yaml` must NOT include the locale
+- `ModelContextToolCollector` reads the attributes, resolves each route via the Symfony router (`router.default`), and builds a JSON manifest
+- Manifest served at `/_webmcp/wishlist_concierge/tools.json`; `assets/shop/webmcp/registry.js` fetches it and registers each tool via `document.modelContext.registerTool()` at runtime — adding a tool needs no JS
 - The "WebMCP Toolbox" view now renders dynamically from `document.modelContext.getTools()` — always reflects what's registered
 - Frontend UI: WebMCP status badge (clicks open toolbox modal)
 
@@ -160,9 +165,9 @@ ddev exec "cd /var/www/html && yarn encore production"
 | Issue                                                | Solution                                                                    |
 |------------------------------------------------------|-----------------------------------------------------------------------------|
 | `requires PHP ≥ 8.4.1`                               | Always use `ddev exec` for console commands                                 |
-| `Cannot load resource "config/services/webmcp.yaml"` | Check YAML syntax, ensure services are registered in `config/services.yaml` |
+| `Cannot load resource "config/services/webmcp.xml"`  | Check XML syntax, ensure services are registered in `config/services/xml`   |
 | 404 on `product.get_details`                         | Sylius Shop API does not accept locale prefix                               |
-| "Registered 0/8 — failed"                            | Webpack duplicates registry.js; ensure lazy loading is configured correctly |
+| "Registered 0/12 — failed"                           | Webpack duplicates registry.js; ensure lazy loading is configured correctly |
 | `class not found` errors                             | Run `ddev exec "php vendor/bin/console cache:clear"`                        |
 
 ### Naming conventions
@@ -186,12 +191,14 @@ ddev exec "cd /var/www/html && yarn encore production"
 
 | Path                                                   | Purpose                       |
 |--------------------------------------------------------|-------------------------------|
+| `config/routes/shop.yaml`                              | Explicit WebMCP route definitions (no attribute routing) |
 | `src/Command/ConciergeTagsSetupCommand.php`            | Tag setup logic               |
 | `src/Service/ThemedProductFinder.php`                  | Theme-based product filtering |
-| `src/Service/ToolContractMetadata.php`                 | WebMCP tool schema generation |
+| `src/Service/ModelContextToolCollector.php`            | WebMCP tool manifest generation (reads `#[ModelContextTool]` + router) |
+| `src/Attribute/ModelContextTool.php`                   | Tool attribute with `routeName` property |
 | `src/Dto/WishlistCreateRequest.php`                    | Wishlist creation DTO         |
 | `src/Security/WishlistAccessChecker.php`               | Wishlist access rules         |
-| `assets/shop/webmcp/registry.js`                       | WebMCP tool definitions       |
+| `assets/shop/webmcp/registry.js`                       | Fetches manifest, registers tools at runtime |
 | `assets/shop/webmcp/controllers/toolbox_controller.js` | Toolbox UI controller         |
-| `config/services/webmcp.yaml`                          | Service wiring                |
+| `config/services/webmcp.xml`                           | Service wiring                |
 | `config/packages/bitexpert_wishlist_concierge.yaml`    | Plugin parameters             |

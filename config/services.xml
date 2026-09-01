@@ -9,7 +9,4 @@
     <imports>
         <import resource="services/**" />
     </imports>
-
-    <services>
-    </services>
 </container>

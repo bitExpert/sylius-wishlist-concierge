@@ -15,7 +15,7 @@
  - Devpost: `https://webmcp.devpost.com`
  - WebMCP Spec: `https://webmachinelearning.github.io/webmcp/`
 
-> **Contest snippet required by judges** — this repo contains `document.modelContext.registerTool` (see `assets/shop/webmcp/registry.js:37`):
+> **Contest snippet required by judges** — this repo contains `document.modelContext.registerTool` (see `assets/shop/webmcp/registry.js:180`, registering tools from the server-served manifest):
 > ```js
 > await document.modelContext.registerTool({
 >   name: "wishlist.create",
@@ -36,10 +36,10 @@
 > Agent: `product.search {theme:"gift"}` → returns `Ethereal_Drift_T_Shirt` etc. Human: “more books, less plastic” → agent swaps via `wishlist.add_item`.
 
 **Story 2 — Budget**
-> Agent: `wishlist.optimize_for_budget {wishlistId:2, budgetCents:15000}` → `BudgetOptimizer.php:25` cheapest-first knapsack with `quantity * ChannelPricing` → `chosen:["Lunar_Echo_T_Shirt-variant-0"], total $17.03, $7 remaining` + explanation string. Human decides to increase budget.
+> Agent: `wishlist.optimize_for_budget {wishlistId:2, budgetCents:15000}` → `BudgetOptimizer.php:40` cheapest-first knapsack with `quantity * ChannelPricing` → `chosen:["Lunar_Echo_T_Shirt-variant-0"], total $17.03, $7 remaining` + explanation string. Human decides to increase budget.
 
 **Story 3 — Share & Checkout**
-> `wishlist.move_to_cart {wishlistId:2}` → `CartTransferController.php:21` triggers `window.confirm("Move 1 item ($17.03) to cart?")` at `registry.js:196` (spec Mitigation 6.3.2 — agent cannot finalize without human). `OrderFactory` + `OrderProcessor` → `cartToken` + `/en_US/cart`. Anon allowed (`FASHION_WEB` gift registries are shareable via `WishlistAccessChecker.php:21` — owned lists still `403`).
+> `wishlist.move_to_cart {wishlistId:2}` → `CartTransferController.php:50` (the `confirmMessage` in the `#[ModelContextTool]` annotation) triggers `window.confirm("Move items from this wishlist to cart?")` at `registry.js:71` (spec Mitigation 6.3.2 — agent cannot finalize without human; the exact items/amount shown come from the preceding budget optimization). `OrderFactory` + `OrderProcessor` → `cartToken` + `/en_US/cart`. Anon allowed (`FASHION_WEB` gift registries are shareable via `WishlistAccessChecker.php:34` — owned lists still `403`).
 
 ## Architecture
 
@@ -61,15 +61,15 @@ graph TD
       Registry -->|fetch /en_US/_webmcp/wishlist_concierge/*| TCV
       TCV --> Ctrl{"Controller Shop"}
       Ctrl --> PS["ProductSearchController.php<br/>GET /products/search"]
-      Ctrl --> WL["WishlistController.php<br/>POST /wishlist<br/>GET /wishlist/{id}<br/>POST /wishlist/{id}/items<br/>POST /wishlist/{id}/items/bulk<br/>POST /wishlist/{id}/items/clear<br/>DELETE /wishlist/{id}<br/>POST /wishlist/{id}/optimize"]
+      Ctrl --> WL["WishlistController.php<br/>POST /wishlist<br/>GET /wishlist/{id}<br/>DELETE /wishlist/{id}<br/>POST /wishlist/{id}/items<br/>POST /wishlist/{id}/items/bulk<br/>POST /wishlist/{id}/items/clear<br/>POST /wishlist/{id}/items/remove<br/>POST /wishlist/{id}/optimize"]
       Ctrl --> CT["CartTransferController.php<br/>POST /wishlist/{id}/move-to-cart"]
-      Ctrl --> TC["ToolContractsController.php<br/>GET /_webmcp/wishlist_concierge/contracts"]
+      Ctrl --> TC["ToolContractsController.php<br/>GET /_webmcp/wishlist_concierge/tools.json"]
       PS --> TF["ThemedProductFinder.php<br/>QB innerJoin p.channels ch<br/>innerJoin t.code IN (:taxonCodes)"]
       WL --> WM["WishlistManager.php<br/>sylius_wishlist_plugin.factory.wishlist"]
       WL --> BO["BudgetOptimizer.php<br/>quantity * ChannelPricing knapsack"]
       BO --> EP["EligiblePromotionsProvider.php<br/>active CatalogPromotions per channel"]
       CT --> OF["Factory sylius.factory.order<br/>+ order_processing.order_processor"]
-      TC --> TM["ToolContractMetadata.php<br/>introspects DTO constraints → JSON Schema"]
+      TC --> MC["ModelContextToolCollector.php<br/>#[ModelContextTool] attributes + router lookup via routeName"]
    end
 
    subgraph Supporting["Supporting services"]
@@ -88,15 +88,16 @@ graph TD
 
 ```
 config/packages/bitexpert_wishlist_concierge.yaml  → themes param
-config/services/webmcp.yaml                         → services private:true, controllers public:true
+config/routes/shop.yaml                             → explicit YAML routes for all WebMCP endpoints (no #[Route] attributes, no wildcard import)
+config/services/webmcp.xml                          → services private:true, controllers public:true
 config/twig_hooks/shop.yaml                         → sylius_shop.base.footer.content badge
 src/Dto/* (9)                                       → #[Assert] validation (WishlistCreateRequest, WishlistAddItemRequest, WishlistRemoveItemRequest, WishlistBulkAddRequest, WishlistClearRequest, WishlistDeleteRequest, BudgetOptimizeRequest, MoveToCartRequest, ProductSearchRequest)
 src/Security/ToolContractValidator.php              → kernel.request listener: deserializes JSON → DTO → validates constraints → 422 on failure
 src/Security/WishlistAccessChecker.php              → shareable anon vs owned 403
-src/Controller/Shop/ToolContractsController.php     → GET /_webmcp/wishlist_concierge/contracts, GET /_webmcp/wishlist_concierge/contracts/{tool} — machine-readable JSON Schema
+src/Controller/Shop/ToolContractsController.php     → GET /_webmcp/wishlist_concierge/tools.json — machine-readable tool manifest
+src/Service/ModelContextToolCollector.php           → reads #[ModelContextTool] attributes, resolves route URL via routeName lookup; builds manifest
 src/Service/ThemedProductFinder.php                 → channel-scoped QB, mapProduct()
 src/Service/BudgetOptimizer.php                     → int cents + quantity + CatalogPromotion integration
-src/Service/ToolContractMetadata.php                → introspects DTO constraint metadata → JSON Schema for each tool
 src/Service/ErrorResponseFactory.php                → centralized {error,message,violations?} JSON envelope
 src/Service/ValidationErrorFormatter.php            → ConstraintViolation → [{field,message}]
 src/Command/ConciergeTagsSetupCommand.php           → bitexpert:wishlist-concierge:setup-tags — creates concierge_tags attribute + tags products
@@ -110,7 +111,7 @@ assets/shop/webmcp/controllers/toast_controller.js  → listens webmcp:toast, re
 
 ## WebMCP Tool Reference — Full JSON Schema Inline
 
-All tools are imperative at `assets/shop/webmcp/registry.js:37` via `document.modelContext.registerTool(tool, {signal})`. `name` regex `^[A-Za-z0-9_.-]{1,128}$`.
+All tools are imperative: definitions live in `#[ModelContextTool]` attributes on the shop controllers, are resolved to their Symfony routes by name (via `routeName`), and served as a JSON manifest at `/en_US/_webmcp/wishlist_concierge/tools.json`. `assets/shop/webmcp/registry.js` fetches that manifest and registers each tool at runtime via `document.modelContext.registerTool(tool, {signal})` — adding a tool requires no JS. `name` regex `^[A-Za-z0-9_.-]{1,128}$`.
 
 **Error handling:** Every tool's `execute` function is wrapped by `withErrorHandling()` — if the underlying API call throws, the tool returns a structured `{error, message}` JSON payload instead of crashing the agent. The `apiFetch()` helper also parses server-side `{error, message, violations}` envelopes so the front-end (and the agent) always receives a consistent error shape.
 
@@ -119,11 +120,12 @@ All tools are imperative at `assets/shop/webmcp/registry.js:37` via `document.mo
 | Event                       | Fired by                            | Payload                       |
 |-----------------------------|-------------------------------------|-------------------------------|
 | `webmcp:toast`              | `toolbox_controller.js`, `apiFetch` | `{type: "success"|"error"|"info", message}` |
-| `webmcp:wishlist-created`   | `wishlist.create_themed`            | `{wishlist: {id, name, ...}}` |
-| `webmcp:wishlist-updated`   | `wishlist.add_item`                 | `{wishlist: {...}}`           |
+| `webmcp:wishlist-created`   | `wishlist.create`                   | `{wishlist: {id, name, ...}}` |
+| `webmcp:wishlist-updated`   | `wishlist.add_item`, `wishlist.bulk_add`, `wishlist.clear`, `wishlist.remove_item` | `{wishlist: {...}}` |
+| `webmcp:wishlist-deleted`   | `wishlist.delete`                   | `{wishlist: {...}}`           |
 | `webmcp:promotions-applied` | `wishlist.optimize_for_budget`      | `{promotionsApplied: [...]}`  |
 | `webmcp:cart-created`       | `wishlist.move_to_cart`             | `{cartToken, cartUrl, ...}`   |
-| `webmcp:ready`              | `registerAll()`                     | `{count: 9}`                  |
+| `webmcp:ready`              | `registerAll()`                     | `{count: 12}`                  |
 
 ### `wishlist.list` — `readOnlyHint:true`
 List recent wishlists for the current channel.
@@ -223,6 +225,26 @@ List recent wishlists for the current channel.
 }
 ```
 
+### `wishlist.remove_item`
+```json
+{
+  "name": "wishlist.remove_item",
+  "description": "Remove an item from a wishlist by itemId.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "wishlistId": { "type": "integer" },
+      "itemId": { "type": "integer", "description": "Wishlist line-item id", "minimum": 1 }
+    },
+    "required": ["wishlistId","itemId"]
+  },
+  "destructiveHint": true,
+  "emitsEvents": ["webmcp:wishlist-updated"],
+  "pathParams": {"wishlistId":"id"},
+  "execute": "POST /en_US/_webmcp/wishlist_concierge/wishlist/{id}/items/remove {itemId} → {wishlist} | 400 Item not found | 403 token mismatch"
+}
+```
+
 ### `wishlist.optimize_for_budget` — `readOnlyHint:true`
 ```json
 {
@@ -295,16 +317,13 @@ List recent wishlists for the current channel.
 }
 ```
 
-## Machine-Readable Tool Contracts
+## Machine-Readable Tool Manifest
 
-The repository exposes the `inputSchema` of every imperative tool as **JSON-Schema** over HTTP, introspected directly from the Symfony Validator constraints on each tool's input DTO (`ToolContractMetadata`). This makes the "structured contract" declared via WebMCP discoverable by any API consumer or test client, and guarantees the documented schema and the server-side validation are always in sync.
+The plugin exposes a **single JSON manifest** that describes every WebMCP tool — name, description, JSON-Schema `inputSchema` (introspected from the Symfony Validator constraints on each tool's input DTO), route URL, path params, and annotations. `assets/shop/webmcp/registry.js` fetches this manifest at runtime and registers each tool with `document.modelContext.registerTool()` — so the schema shown in this reference, the tool advertised to the agent, and the payload validated by `ToolContractValidator` are all one and the same.
 
-| Endpoint                                                 | Description                                                          |
-|----------------------------------------------------------|----------------------------------------------------------------------|
-| `GET /en_US/_webmcp/wishlist_concierge/contracts`        | List all tool contracts, e.g. `{tools:[{name,dto,inputSchema}]}`     |
-| `GET /en_US/_webmcp/wishlist_concierge/contracts/{tool}` | Single contract for a tool, e.g. `/contracts/wishlist.create_themed` |
-
-The front-end `registry.js` `inputSchema` mirrors these contracts — the server-side `ToolContractValidator` enforces them on every request, so the schema shown in this reference, the tool advertised to the agent, and the payload actually validated are all one and the same.
+| Endpoint                                          | Description                                              |
+|---------------------------------------------------|----------------------------------------------------------|
+| `GET /en_US/_webmcp/wishlist_concierge/tools.json` | Full tool manifest: `{tools:[{name,description,inputSchema,route,pathParams,...}]}` |
 
 ## Installation — Plugin Skeleton (Test Application)
 
@@ -329,7 +348,7 @@ composer require bitexpert/sylius-wishlist-concierge-plugin
    ddev exec vendor/bin/console bitexpert:wishlist-concierge:setup-tags -n
    ddev exec vendor/bin/console bitexpert:wishlist-concierge:setup-tags --dry-run   # preview without persisting
    ```
-5. Assets (`webpack.config.js:24` `plugin-shop-entry` → `assets/shop/entrypoint.js:1` → `assets/shop/webmcp/registry.js:30`):
+5. Assets (`webpack.config.js:24` `plugin-shop-entry` → `assets/shop/entrypoint.js:1` → `assets/shop/webmcp/registry.js:148`):
    ```bash
    ddev exec bash -c "cd vendor/sylius/test-application && yarn build"
    # → public/build/app/shop/plugin-shop-entry.*.js (now 87.5 KiB)
@@ -344,7 +363,7 @@ symfony server:start -d  # https://localhost:8000
 
 ## Testing
 
-**Unit — quantity-aware optimizer** `tests/Unit/Service/BudgetOptimizerTest.php:15` (3 cases, no DB):
+**Unit — quantity-aware optimizer** `tests/Unit/Service/BudgetOptimizerTest.php:96` (5 cases, no DB):
 
 ```bash
 ddev exec vendor/bin/phpunit tests/Unit/Service/BudgetOptimizerTest.php --testdox
@@ -359,10 +378,9 @@ playwright-cli -s=wishlist eval "await document.modelContext.getTools().then(t=>
 playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search'),{theme:'gift',limit:2})"
 ```
 
-**Machine-readable contracts (verify server-side schema is in sync):**
+**Machine-readable manifest (verify server-side schema is in sync):**
 ```bash
-curl -s https://wishlist-concierge.ddev.site/_webmcp/wishlist_concierge/contracts | python3 -m json.tool   # all 4 imperative tools
-curl -s https://wishlist-concierge.ddev.site/_webmcp/wishlist_concierge/contracts/wishlist.create | python3 -m json.tool
+curl -sk https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/tools.json | python3 -m json.tool   # all 12 tools
 ```
 
 **Style:**
@@ -386,15 +404,16 @@ Channel is determined automatically via `ChannelContext`; override via FASHION_W
 
 ## Security
 
-`src/Security/WishlistAccessChecker.php:21` — owned wishlists (`getShopUser() !== null`) require `ROLE_USER` + owner `id` match → `403`. Anonymous gift registries are *shareable by design* (`shopUser === null` → allow) — required for contest anon `move_to_cart`. To lock anon to cookie, uncomment token check `wishlist.getToken() !== cookieTokenResolver->resolve()`.
+`src/Security/WishlistAccessChecker.php:34` — owned wishlists (`getShopUser() !== null`) require `ROLE_USER` + owner `id` match → `403`. Anonymous gift registries are *shareable by design* (`shopUser === null` → allow) — required for contest anon `move_to_cart`. To lock anon to cookie, uncomment token check `wishlist.getToken() !== cookieTokenResolver->resolve()`.
 
 ### WebMCP tool contract validation
 
-`src/Security/ToolContractValidator.php` is a `kernel.request` event listener (priority 16) that centralizes **server-side validation of the WebMCP tool contracts**. For every imperative `/_webmcp/wishlist_concierge/*` endpoint that accepts a JSON payload (`create`, `add_item`, `optimize`, `move_to_cart`), it:
+`src/Security/ToolContractValidator.php` is a `kernel.request` event listener (priority 16) that centralizes **server-side validation of the WebMCP tool contracts**. For every imperative `/_webmcp/wishlist_concierge/*` endpoint that accepts a JSON payload (`create`, `add_item`, `bulk_add`, `clear`, `remove_item`, `optimize`, `move_to_cart`), it:
 
-1. Deserializes the request body into the tool's declared input DTO (from `ToolContractValidator::TOOL_CONTRACTS`),
-2. Validates it against the DTO's `#[Assert]` constraints,
-3. On failure returns a **single, deterministic `422`** response shaped by `ErrorResponseFactory` + `ValidationErrorFormatter`.
+1. Resolves the tool's input DTO from the collector's `routeDtoMap()` (route name → DTO class),
+2. Deserializes the request body via the DTO's `fromRequest()`,
+3. Validates it against the DTO's `#[Assert]` constraints,
+4. On failure returns a **single, deterministic `422`** response shaped by `ErrorResponseFactory` + `ValidationErrorFormatter`.
 
 This means the "structured contract" promised by WebMCP is honoured regardless of which client (browser, script, test) invokes it — the schema advertised to the agent is exactly the payload the server enforces. On success, the validated DTO is exposed to the controller via the `_webmcp_validated_dto` request attribute.
 

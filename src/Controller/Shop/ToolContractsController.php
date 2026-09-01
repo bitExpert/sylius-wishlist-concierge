@@ -16,7 +16,6 @@ use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
 
 final class ToolContractsController extends AbstractController
 {
@@ -25,7 +24,6 @@ final class ToolContractsController extends AbstractController
     ) {
     }
 
-    #[Route('/_webmcp/wishlist_concierge/tools.json', name: 'bitexpert_concierge_tool_manifest', methods: ['GET'])]
     public function manifest(): JsonResponse
     {
         return $this->manifestResponse(['tools' => $this->collector->collect()]);

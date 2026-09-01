@@ -9,6 +9,10 @@ use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchControl
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Validator\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Validator\Mapping\Factory\LazyLoadingMetadataFactory;
 
@@ -26,7 +30,41 @@ final class ModelContextToolCollectorTest extends TestCase
                 CartTransferController::class,
             ],
             new LazyLoadingMetadataFactory($loader),
+            $this->createRouter(),
+            new NullLogger(),
         );
+    }
+
+    /**
+     * Build a router whose route collection mirrors config/routes/shop.yaml
+     * (without the /{_locale} prefix that the host app adds at import time).
+     */
+    private function createRouter(): RouterInterface
+    {
+        $routes = [
+            'bitexpert_concierge_product_search' => ['/_webmcp/wishlist_concierge/products/search', ['GET']],
+            'bitexpert_concierge_product_get_details' => ['/_webmcp/wishlist_concierge/products/{productCode}', ['GET']],
+            'bitexpert_concierge_wishlist_list' => ['/_webmcp/wishlist_concierge/wishlist', ['GET']],
+            'bitexpert_concierge_wishlist_create' => ['/_webmcp/wishlist_concierge/wishlist', ['POST']],
+            'bitexpert_concierge_wishlist_get' => ['/_webmcp/wishlist_concierge/wishlist/{id}', ['GET']],
+            'bitexpert_concierge_wishlist_delete' => ['/_webmcp/wishlist_concierge/wishlist/{id}', ['DELETE']],
+            'bitexpert_concierge_wishlist_add_item' => ['/_webmcp/wishlist_concierge/wishlist/{id}/items', ['POST']],
+            'bitexpert_concierge_wishlist_bulk_add' => ['/_webmcp/wishlist_concierge/wishlist/{id}/items/bulk', ['POST']],
+            'bitexpert_concierge_wishlist_clear' => ['/_webmcp/wishlist_concierge/wishlist/{id}/items/clear', ['POST']],
+            'bitexpert_concierge_wishlist_remove_item' => ['/_webmcp/wishlist_concierge/wishlist/{id}/items/remove', ['POST']],
+            'bitexpert_concierge_wishlist_optimize' => ['/_webmcp/wishlist_concierge/wishlist/{id}/optimize', ['POST']],
+            'bitexpert_concierge_wishlist_move_to_cart' => ['/_webmcp/wishlist_concierge/wishlist/{id}/move-to-cart', ['POST']],
+        ];
+
+        $collection = new RouteCollection();
+        foreach ($routes as $name => [$path, $methods]) {
+            $collection->add($name, new Route($path, [], [], [], '', [], $methods));
+        }
+
+        $router = $this->createMock(RouterInterface::class);
+        $router->method('getRouteCollection')->willReturn($collection);
+
+        return $router;
     }
 
     public function testCollectsAllTwelveTools(): void

@@ -19,7 +19,6 @@ use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class ProductSearchController extends AbstractController
@@ -36,8 +35,8 @@ final class ProductSearchController extends AbstractController
         description: 'Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
         dtoClass: ProductSearchRequest::class,
         readOnlyHint: true,
+        routeName: 'bitexpert_concierge_product_search',
     )]
-    #[Route('/_webmcp/wishlist_concierge/products/search', name: 'bitexpert_concierge_product_search', methods: ['GET'])]
     public function search(Request $request): JsonResponse
     {
         $dto = ProductSearchRequest::fromRequest($request);
@@ -79,8 +78,8 @@ final class ProductSearchController extends AbstractController
         name: 'product.get_details',
         description: 'Get product details by productCode, including variants and pricing.',
         readOnlyHint: true,
+        routeName: 'bitexpert_concierge_product_get_details',
     )]
-    #[Route('/_webmcp/wishlist_concierge/products/{productCode}', name: 'bitexpert_concierge_product_get_details', methods: ['GET'])]
     public function getDetails(string $productCode, Request $request): JsonResponse
     {
         $channelCode = $request->query->get('channelCode');

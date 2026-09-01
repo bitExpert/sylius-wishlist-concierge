@@ -14,32 +14,36 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
 use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
 use Symfony\Component\Validator\Mapping\PropertyMetadataInterface;
+use Psr\Log\LoggerInterface;
 
 /**
-     * Collects ModelContext tool definitions from controller methods by reading
-     * the #[ModelContextTool] and #[Route] attributes via PHP reflection.
- *
- * The resulting manifest is the single source of truth consumed by the
- * JS frontend and the contract endpoints.
- */
-final class ModelContextToolCollector
-{
-    /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
-    private ?array $cache = null;
+      * Collects ModelContext tool definitions from controller methods by reading
+      * the #[ModelContextTool] and #[Route] attributes via PHP reflection.
+  *
+  * The resulting manifest is the single source of truth consumed by the
+  * JS frontend and the contract endpoints.
+  */
+ final class ModelContextToolCollector
+ {
+     /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
+     private ?array $cache = null;
 
-    /**
-     * @param list<class-string>       $controllerClasses
-     * @param MetadataFactoryInterface $metadataFactory
-     */
-    public function __construct(
-        private readonly array $controllerClasses,
-        private readonly MetadataFactoryInterface $metadataFactory,
-    ) {
-    }
+     /**
+      * @param list<class-string>       $controllerClasses
+      * @param MetadataFactoryInterface $metadataFactory
+      */
+     public function __construct(
+         private readonly array $controllerClasses,
+         private readonly MetadataFactoryInterface $metadataFactory,
+         private readonly RouterInterface $router,
+         private readonly LoggerInterface $logger,
+     ) {
+     }
 
     /**
      * Build the full tool manifest.
@@ -148,7 +152,7 @@ final class ModelContextToolCollector
                 foreach ($method->getAttributes(ModelContextTool::class) as $attr) {
                     /** @var ModelContextTool $tool */
                     $tool = $attr->newInstance();
-                    $route = $this->resolveRoute($method, $classPrefix);
+                    $route = $this->resolveRoute($method, $classPrefix, $tool);
 
                     if (null !== $route) {
                         $entries[] = ['tool' => $tool, 'route' => $route, 'method' => $method];
@@ -179,8 +183,29 @@ final class ModelContextToolCollector
     /**
      * @return array{path: string, name: string, methods: list<string>}|null
      */
-    private function resolveRoute(\ReflectionMethod $method, string $classPrefix): ?array
+    private function resolveRoute(\ReflectionMethod $method, string $classPrefix, ModelContextTool $tool): ?array
     {
+        // If the tool specifies a route name, fetch it from the router.
+        if (null !== $tool->routeName) {
+            $route = $this->router->getRouteCollection()->get($tool->routeName);
+
+            if (null === $route) {
+                $this->logger->warning(
+                    'Route "{name}" not found for WebMCP tool "{tool}"',
+                    ['name' => $tool->routeName, 'tool' => $tool->name]
+                );
+
+                return null;
+            }
+
+            return [
+                'path' => $route->getPath(),
+                'name' => $tool->routeName,
+                'methods' => $route->getMethods(),
+            ];
+        }
+
+        // Fallback: read a #[Route] attribute on the method.
         $attrs = $method->getAttributes(Route::class, \ReflectionAttribute::IS_INSTANCEOF);
 
         if ([] === $attrs) {

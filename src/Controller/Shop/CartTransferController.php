@@ -28,14 +28,13 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class CartTransferController extends AbstractController
 {
     public function __construct(
         private readonly WishlistRepositoryInterface $wishlistRepository,
         private readonly ChannelContextInterface $channelContext,
-        private readonly EntityManagerInterface $entityManager,
         private readonly FactoryInterface $orderFactory,
         private readonly FactoryInterface $orderItemFactory,
         private readonly OrderItemQuantityModifierInterface $quantityModifier,
@@ -51,8 +50,8 @@ final class CartTransferController extends AbstractController
         confirmMessage: 'Move items from this wishlist to cart?',
         emitsEvents: ['webmcp:cart-created'],
         pathParams: ['wishlistId' => 'id'],
+        routeName: 'bitexpert_concierge_wishlist_move_to_cart',
     )]
-    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/move-to-cart', name: 'bitexpert_concierge_wishlist_move_to_cart', methods: ['POST'])]
     public function moveToCart(Request $request, int $id, OrderRepositoryInterface $orderRepository): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -62,7 +61,7 @@ final class CartTransferController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 

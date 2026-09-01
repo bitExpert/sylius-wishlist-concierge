@@ -1,8 +1,8 @@
-bitexpert_sylius_wishlist_concierge_plugin_admin:
-    resource: "@BitExpertSyliusWishlistConciergePlugin/config/routes/admin.yaml"
-
 bitexpert_sylius_wishlist_concierge_plugin_shop:
     resource: "@BitExpertSyliusWishlistConciergePlugin/config/routes/shop.yaml"
+    prefix: /{_locale}
+    requirements:
+        _locale: ^[A-Za-z]{2,4}(_([A-Za-z]{4}|[0-9]{3}))?(_([A-Za-z]{2}|[0-9]{3}))?$
 
 sylius_wishlist_shop:
     resource: "@SyliusWishlistPlugin/config/routes.yaml"

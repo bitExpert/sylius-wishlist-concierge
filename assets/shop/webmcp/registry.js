@@ -21,8 +21,13 @@ function getBaseUrl() {
     return `/${l}`;
 }
 
+function stripLocalePlaceholder(path) {
+    return path.replace(/^\/\{_locale\}/, '');
+}
+
 async function apiFetch(path, opts = {}) {
-    const url = `${getBaseUrl()}${path}`;
+    const cleanPath = stripLocalePlaceholder(path);
+    const url = `${getBaseUrl()}${cleanPath}`;
     const res = await fetch(url, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...opts.headers },
         ...opts,

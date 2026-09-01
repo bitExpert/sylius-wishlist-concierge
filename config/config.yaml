@@ -1,4 +1,3 @@
 imports:
     - { resource: "packages/bitexpert_wishlist_concierge.yaml" }
     - { resource: "twig_hooks/**/*.yaml" }
-    - { resource: "services/webmcp.xml" }

@@ -1,8 +1,82 @@
-bitexpert_concierge:
-    resource: "@BitExpertSyliusWishlistConciergePlugin/src/Controller/Shop/"
-    type: attribute
-    prefix: /{_locale}
+bitexpert_concierge_tool_manifest:
+    path: /_webmcp/wishlist_concierge/tools.json
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController::manifest
+    methods: [GET]
+
+bitexpert_concierge_product_search:
+    path: /_webmcp/wishlist_concierge/products/search
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController::search
+    methods: [GET]
+
+bitexpert_concierge_product_get_details:
+    path: /_webmcp/wishlist_concierge/products/{productCode}
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController::getDetails
+    methods: [GET]
     requirements:
-        _locale: en_US|de_DE|fr_FR
-    defaults:
-        _locale: en_US
+        productCode: '.+'
+
+bitexpert_concierge_wishlist_list:
+    path: /_webmcp/wishlist_concierge/wishlist
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::list
+    methods: [GET]
+
+bitexpert_concierge_wishlist_create:
+    path: /_webmcp/wishlist_concierge/wishlist
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::create
+    methods: [POST]
+
+bitexpert_concierge_wishlist_get:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::get
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_delete:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::delete
+    methods: [DELETE]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_add_item:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/items
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::addItem
+    methods: [POST]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_bulk_add:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/items/bulk
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::bulkAddItems
+    methods: [POST]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_clear:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/items/clear
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::clearAllItems
+    methods: [POST]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_remove_item:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/items/remove
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::postRemoveItem
+    methods: [POST]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_optimize:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/optimize
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController::optimize
+    methods: [POST]
+    requirements:
+        id: '\d+'
+
+bitexpert_concierge_wishlist_move_to_cart:
+    path: /_webmcp/wishlist_concierge/wishlist/{id}/move-to-cart
+    controller: BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController::moveToCart
+    methods: [POST]
+    requirements:
+        id: '\d+'

@@ -15,9 +15,10 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Attribute;
 /**
  * Marks a controller method as an imperatively registered ModelContext tool.
  *
- * The ModelContextToolCollector reads this attribute together with the Symfony
- * #[Route] attribute on the same method to build a machine-readable tool
- * manifest (name, description, inputSchema, annotations, route URL).
+ * The ModelContextToolCollector reads this attribute and resolves the tool's
+ * Symfony route via the routeName property (falling back to a #[Route]
+ * attribute on the method) to build a machine-readable tool manifest
+ * (name, description, inputSchema, annotations, route URL).
  */
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_METHOD)]
 final class ModelContextTool
@@ -46,6 +47,8 @@ final class ModelContextTool
         public readonly array $queryParams = [],
         /** Extra HTTP headers sent with every request. */
         public readonly array $headers = [],
+        /** Name of a Symfony route that this tool should use. When provided, the collector will look up the route by name instead of reading a #[Route] attribute. */
+        public readonly ?string $routeName = null,
     ) {
     }
 }
