@@ -1,10 +1,17 @@
 /**
  * WebMCP Registry — Wishlist Concierge
- * Registers 12 imperative tools via document.modelContext.registerTool
+ * Registers imperative tools via document.modelContext.registerTool.
+ *
+ * Tool DEFINITIONS (name, description, schema, route, annotations, ...) are
+ * declared once on the Symfony controller methods via the #[WebMcpTool]
+ * attribute and served as a JSON manifest from /_webmcp/wishlist_concierge/tools.json.
+ * This module fetches that manifest and wires each tool to a single generic
+ * executor, so adding a tool only requires the PHP attribute — no JS here.
+ *
  * See https://webmachinelearning.github.io/webmcp/
  */
-const BASE_CHANNEL = 'FASHION_WEB';
 const DEFAULT_LOCALE = 'en_US';
+const MANIFEST_URL = '/_webmcp/wishlist_concierge/tools.json';
 
 function getBaseUrl() {
     const locale = document.documentElement.lang || DEFAULT_LOCALE;
@@ -12,10 +19,6 @@ function getBaseUrl() {
     const pathLocale = window.location.pathname.match(/^\/(en_US|de_DE|fr_FR)(\/|$)/);
     const l = pathLocale ? pathLocale[1] : locale;
     return `/${l}`;
-}
-
-function getApiUrl(path) {
-    return `${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 async function apiFetch(path, opts = {}) {
@@ -55,286 +58,92 @@ function withErrorHandling(fn, toolName) {
 }
 
 /**
- * The full catalogue of WebMCP tools registered with the runtime.
- * Exported so the Discoverability UI ("WebMCP toolbox") can list and run
- * the tools from a single source of truth, without duplicating definitions.
+ * Build a generic executor for a tool definition from the manifest.
+ * Handles placeholder substitution, query params, JSON body, confirmation
+ * prompts and post-success DOM events — no per-tool code required.
  */
-const TOOLS = [
-        {
-            name: 'wishlist.list',
-            description: 'List recent wishlists for the current channel. The active channel is automatically inferred from the current Sylius context. Use to discover existing wishlists before creating a new themed one.',
-            inputSchema: {
-                type: 'object',
-                properties: {},
-            },
-            annotations: { readOnlyHint: true },
-            execute: withErrorHandling(async (input) => {
-                const data = await apiFetch('/concierge/wishlist');
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.list'),
-        },
-        {
-            name: 'wishlist.get',
-            description: 'Get details of a single wishlist by id, including items with variantCode, productName, price and quantities.',
-            inputSchema: {
-                type: 'object',
-                properties: { wishlistId: { type: 'integer', description: 'Wishlist id' } },
-                required: ['wishlistId'],
-            },
-            annotations: { readOnlyHint: true },
-            execute: withErrorHandling(async ({ wishlistId }) => {
-                const data = await apiFetch(`/concierge/wishlist/${wishlistId}`);
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.get'),
-        },
-        {
-            name: 'wishlist.create',
-            description: 'Create a new themed wishlist. The active channel is automatically inferred from the current Sylius context. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'Wishlist name, e.g. Birthday Wishlist — $150' },
-                    theme: { type: 'string', description: 'Theme keyword: birthday, gift, summer, etc.' },
-                },
-                required: ['name', 'theme'],
-            },
-            execute: withErrorHandling(async (input) => {
-                const data = await apiFetch('/concierge/wishlist', {
-                    method: 'POST',
-                    body: JSON.stringify({ name: input.name, theme: input.theme }),
-                });
-                // Dispatch live UI update
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-created', { detail: data }));
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.create'),
-        },
-        {
-            name: 'product.search',
-            description: 'Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    theme: { type: 'string', description: 'Theme keyword' },
-                    taxonCodes: { type: 'array', items: { type: 'string' }, description: 'Optional taxon filter e.g. ["t_shirts","caps"]' },
-                    priceMinCents: { type: 'integer', description: 'Min price cents' },
-                    priceMaxCents: { type: 'integer', description: 'Max price cents' },
-                    limit: { type: 'integer', default: 12 },
-                },
-                required: ['theme'],
-            },
-            annotations: { readOnlyHint: true },
-            execute: withErrorHandling(async (input) => {
-                const params = new URLSearchParams();
-                params.set('theme', input.theme);
-                params.set('limit', String(input.limit || 12));
-                if (input.priceMinCents) params.set('priceMin', String(input.priceMinCents));
-                if (input.priceMaxCents) params.set('priceMax', String(input.priceMaxCents));
-                if (input.taxonCodes) input.taxonCodes.forEach((c) => params.append('taxonCodes[]', c));
-                const data = await apiFetch(`/concierge/products/search?${params.toString()}`);
-                return JSON.stringify(data, null, 2);
-            }, 'product.search'),
-        },
-        {
-            name: 'product.get_details',
-            description: 'Get product details by productCode, including variants and pricing.',
-            inputSchema: {
-                type: 'object',
-                properties: { productCode: { type: 'string' } },
-                required: ['productCode'],
-            },
-            annotations: { readOnlyHint: true },
-            execute: withErrorHandling(async ({ productCode }) => {
-                const url = getApiUrl(`/api/v2/shop/products/${productCode}?channelCode=${BASE_CHANNEL}`);
-                const res = await fetch(url, {
-                    headers: { Accept: 'application/ld+json' },
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`API ${res.status}: ${text}`);
-                }
-                const data = await res.json();
-                return JSON.stringify(data, null, 2);
-            }, 'product.get_details'),
-        },
-        {
-            name: 'wishlist.add_item',
-            description: 'Add a product variant to a wishlist by variantCode and quantity.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                    variantCode: { type: 'string', description: 'Variant code like T_SHIRT_VARIANT' },
-                    quantity: { type: 'integer', default: 1, minimum: 1 },
-                },
-                required: ['wishlistId', 'variantCode'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items`, {
-                    method: 'POST',
-                    body: JSON.stringify({ variantCode: input.variantCode, quantity: input.quantity || 1 }),
-                });
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.add_item'),
-        },
-        {
-            name: 'wishlist.bulk_add',
-            description: 'Add multiple product variants to a wishlist in one call. Input is an array of {variantCode, quantity} objects.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                    items: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                variantCode: { type: 'string', description: 'Variant code like T_SHIRT_VARIANT' },
-                                quantity: { type: 'integer', default: 1, minimum: 1 },
-                            },
-                            required: ['variantCode'],
-                        },
-                    },
-                },
-                required: ['wishlistId', 'items'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/bulk`, {
-                    method: 'POST',
-                    body: JSON.stringify({ items: input.items }),
-                });
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.bulk_add'),
-        },
-        {
-            name: 'wishlist.clear',
-            description: 'Remove all items from a wishlist in one call. Useful for resetting a themed list before re-curating.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                },
-                required: ['wishlistId'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/clear`, {
-                    method: 'POST',
-                    body: JSON.stringify({}),
-                });
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.clear'),
-        },
-        {
-            name: 'wishlist.delete',
-            description: 'Delete a wishlist permanently. A confirmation dialog is shown before the request.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                },
-                required: ['wishlistId'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
+function createGenericExecutor(toolDef) {
+    return async (input, { signal } = {}) => {
+        if (signal?.aborted) throw new Error('Aborted');
 
-                // Confirmation dialog (required by user)
-                if (!window.confirm('Are you sure you want to permanently delete this wishlist? This cannot be undone.')) {
-                    return JSON.stringify({ canceled: true, reason: 'User declined confirmation' }, null, 2);
-                }
+        // 1. Optional static confirmation prompt
+        if (toolDef.confirmMessage) {
+            if (!window.confirm(toolDef.confirmMessage)) {
+                return JSON.stringify({ canceled: true, reason: 'User declined confirmation' }, null, 2);
+            }
+            if (signal?.aborted) throw new Error('Aborted');
+        }
 
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({}),
-                });
+        // 2. Substitute route path placeholders. Input keys may map to a
+        //    differently-named route placeholder via toolDef.pathParams.
+        const pathParams = toolDef.pathParams || {};
+        let url = toolDef.route.path;
+        const consumed = new Set();
+        for (const [key, val] of Object.entries(input)) {
+            const placeholder = pathParams[key] || key;
+            const ph = `{${placeholder}}`;
+            if (url.includes(ph) && val != null) {
+                url = url.replace(ph, encodeURIComponent(String(val)));
+                consumed.add(key);
+            }
+        }
 
-                // Emit ONLY the dedicated event
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-deleted', { detail: data }));
+        // 3. Build request based on HTTP method
+        const method = (toolDef.route.methods && toolDef.route.methods[0]) || 'GET';
+        const opts = { method, headers: { ...toolDef.headers } };
 
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.delete'),
-        },
-        {
-            name: 'wishlist.remove_item',
-            description: 'Remove an item from a wishlist by itemId. Supports both DELETE (RESTful) and POST (with JSON body).',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                    itemId: { type: 'integer', description: 'The DB id of the WishlistProduct to remove' },
-                },
-                required: ['wishlistId', 'itemId'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/items/${input.itemId}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                window.dispatchEvent(new CustomEvent('webmcp:wishlist-updated', { detail: data }));
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.remove_item'),
-        },
-        {
-            name: 'wishlist.optimize_for_budget',
-            description: 'Optimize a wishlist for a budget (cents, USD). Applies eligible Sylius catalog promotions when includePromotions is true: returns chosen variantCodes, totalCents/savedCents, the list of active promotionsApplied and a human explanation. Use before move_to_cart to stay under budget.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                    budgetCents: { type: 'integer', description: 'Budget in cents, e.g. 15000 for $150' },
-                    includePromotions: { type: 'boolean', default: true, description: 'Apply eligible Sylius catalog promotions when computing the optimal set' },
-                },
-                required: ['wishlistId', 'budgetCents'],
-            },
-            annotations: { readOnlyHint: true },
-            execute: withErrorHandling(async (input) => {
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/optimize`, {
-                    method: 'POST',
-                    body: JSON.stringify({ budgetCents: input.budgetCents, includePromotions: input.includePromotions ?? true }),
-                });
-                if (data.promotionsApplied?.length) {
-                    window.dispatchEvent(new CustomEvent('webmcp:promotions-applied', { detail: data }));
-                }
-                return JSON.stringify(data, null, 2);
-            }, 'wishlist.optimize_for_budget'),
-        },
-        {
-            name: 'wishlist.move_to_cart',
-            description: 'Move wishlist items to cart (anon allowed). Requires human confirmation — the tool will show a confirm dialog in the page before proceeding. Optionally pass variantCodes to move subset, else all.',
-            inputSchema: {
-                type: 'object',
-                properties: {
-                    wishlistId: { type: 'integer' },
-                    variantCodes: { type: 'array', items: { type: 'string' }, description: 'Subset to move, omit for all' },
-                },
-                required: ['wishlistId'],
-            },
-            execute: withErrorHandling(async (input, { signal }) => {
-                if (signal?.aborted) throw new Error('Aborted');
-                const preview = await apiFetch(`/concierge/wishlist/${input.wishlistId}`);
-                const items = preview.wishlist.items || [];
-                const count = input.variantCodes ? input.variantCodes.length : items.length;
-                const totalPreview = items.reduce((s, it) => s + (it.price || 0) * it.quantity, 0);
-                const ok = window.confirm(
-                    `Move ${count} item(s) ($${(totalPreview / 100).toFixed(2)}) from wishlist "${preview.wishlist.name}" to cart? This will create a new cart (anon allowed).`,
-                );
-                if (!ok) return JSON.stringify({ canceled: true, reason: 'Human declined confirmation' }, null, 2);
-                if (signal?.aborted) throw new Error('Aborted');
-                const data = await apiFetch(`/concierge/wishlist/${input.wishlistId}/move-to-cart`, {
-                    method: 'POST',
-                    body: JSON.stringify({ variantCodes: input.variantCodes || null }),
-                });
-                window.dispatchEvent(new CustomEvent('webmcp:cart-created', { detail: data }));
-                // Navigate hint
-                return JSON.stringify({ ...data, message: 'Cart created. Visit ' + data.cartUrl + ' with token ' + data.cartToken }, null, 2);
-            }, 'wishlist.move_to_cart'),
-        },
-    ];
+        if (['POST', 'PUT', 'PATCH'].includes(method)) {
+            const body = Object.fromEntries(
+                Object.entries(input).filter(([k]) => !consumed.has(k)),
+            );
+            opts.body = JSON.stringify(body);
+        } else if (['DELETE'].includes(method)) {
+            // DELETE carries remaining input as query params
+            const qs = new URLSearchParams();
+            for (const [k, v] of Object.entries(input)) {
+                if (consumed.has(k) || v == null) continue;
+                if (Array.isArray(v)) v.forEach((x) => qs.append(`${k}[]`, x));
+                else qs.set(k, String(v));
+            }
+            for (const [k, v] of Object.entries(toolDef.queryParams || {})) qs.set(k, v);
+            const s = qs.toString();
+            if (s) url += `?${s}`;
+        } else {
+            // GET — remaining input as query params
+            const qs = new URLSearchParams();
+            for (const [k, v] of Object.entries(input)) {
+                if (consumed.has(k) || v == null) continue;
+                if (Array.isArray(v)) v.forEach((x) => qs.append(`${k}[]`, x));
+                else qs.set(k, String(v));
+            }
+            for (const [k, v] of Object.entries(toolDef.queryParams || {})) qs.set(k, v);
+            const s = qs.toString();
+            if (s) url += `?${s}`;
+        }
+
+        // 4. Fetch (optionally skipping the locale prefix)
+        const data = await apiFetch(url, opts);
+
+        // 5. Dispatch declared post-success DOM events
+        for (const ev of toolDef.emitsEvents || []) {
+            window.dispatchEvent(new CustomEvent(ev, { detail: data }));
+        }
+
+        return JSON.stringify(data, null, 2);
+    };
+}
+
+async function loadManifest() {
+    const base = getBaseUrl();
+    const res = await fetch(`${base}${MANIFEST_URL}`, {
+        headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+        throw new Error(`Failed to load WebMCP manifest: ${res.status}`);
+    }
+    const payload = await res.json();
+    return payload.tools || [];
+}
 
 async function registerAll() {
     if (!('modelContext' in document)) {
@@ -346,15 +155,34 @@ async function registerAll() {
         return;
     }
 
+    let tools;
+    try {
+        tools = await loadManifest();
+    } catch (e) {
+        console.error('[WebMCP] failed to load manifest', e);
+        updateStatus('error', 'WebMCP manifest failed');
+        window.dispatchEvent(new CustomEvent('webmcp:toast', {
+            detail: { type: 'error', message: `WebMCP manifest — ${e.message}` },
+        }));
+        return;
+    }
+
     const results = await Promise.allSettled(
-        TOOLS.map(async (tool) => {
+        tools.map(async (def) => {
+            const tool = {
+                name: def.name,
+                description: def.description,
+                inputSchema: def.inputSchema,
+                annotations: def.annotations,
+                execute: withErrorHandling(createGenericExecutor(def), def.name),
+            };
             try {
                 const registered = await document.modelContext.registerTool(tool);
-                console.log('[WebMCP] registered', tool.name);
-                return { name: tool.name, ok: true };
+                console.log('[WebMCP] registered', def.name);
+                return { name: def.name, ok: true };
             } catch (e) {
-                console.error('[WebMCP] failed to register', tool.name, e);
-                return { name: tool.name, ok: false, error: e };
+                console.error('[WebMCP] failed to register', def.name, e);
+                return { name: def.name, ok: false, error: e };
             }
         }),
     );

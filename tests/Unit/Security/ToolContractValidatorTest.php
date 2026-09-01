@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\BitExpert\SyliusWishlistConciergePlugin\Unit\Security;
 
+use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController;
+use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController;
+use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
+use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,6 +21,8 @@ use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Validator\Mapping\Factory\LazyLoadingMetadataFactory;
+use Symfony\Component\Validator\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Validator\Validation;
 
 final class ToolContractValidatorTest extends TestCase
@@ -27,7 +33,16 @@ final class ToolContractValidatorTest extends TestCase
     {
         $serializer = new Serializer([new ObjectNormalizer(), new ArrayDenormalizer()], [new JsonEncoder()]);
         $validator = Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator();
+        $collector = new WebMcpToolCollector(
+            [
+                WishlistController::class,
+                ProductSearchController::class,
+                CartTransferController::class,
+            ],
+            new LazyLoadingMetadataFactory(new AttributeLoader()),
+        );
         $this->validator = new ToolContractValidator(
+            $collector,
             $validator,
             $serializer,
             new ErrorResponseFactory(),
@@ -51,7 +66,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testIgnoresGetRequests(): void
     {
-        $request = Request::create('/concierge/wishlist', 'GET');
+        $request = Request::create('/_webmcp/wishlist_concierge/wishlist', 'GET');
         $request->attributes->set('_route', 'bitexpert_concierge_wishlist_create');
 
         $event = $this->makeEvent($request);
@@ -63,7 +78,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testValidWishlistCreatePassesThrough(): void
     {
-        $request = Request::create('/en_US/concierge/wishlist', 'POST', [], [], [], [], json_encode([
+        $request = Request::create('/en_US/_webmcp/wishlist_concierge/wishlist', 'POST', [], [], [], [], json_encode([
             'name' => 'Birthday Box',
             'theme' => 'birthday',
         ], JSON_THROW_ON_ERROR));
@@ -80,7 +95,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testInvalidWishlistCreateReturns422(): void
     {
-        $request = Request::create('/en_US/concierge/wishlist', 'POST', [], [], [], [], json_encode([
+        $request = Request::create('/en_US/_webmcp/wishlist_concierge/wishlist', 'POST', [], [], [], [], json_encode([
             'name' => '',
             'theme' => 'bad theme!!',
         ], JSON_THROW_ON_ERROR));
@@ -103,7 +118,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testInvalidAddItemQuantityReturns422(): void
     {
-        $request = Request::create('/en_US/concierge/wishlist/1/items', 'POST', [], [], [], [], json_encode([
+        $request = Request::create('/en_US/_webmcp/wishlist_concierge/wishlist/1/items', 'POST', [], [], [], [], json_encode([
             'variantCode' => 'T_SHIRT_VARIANT',
             'quantity' => 0,
         ], JSON_THROW_ON_ERROR));
@@ -121,7 +136,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testOptimizeAcceptsLegacyBudgetAlias(): void
     {
-        $request = Request::create('/en_US/concierge/wishlist/1/optimize', 'POST', [], [], [], [], json_encode([
+        $request = Request::create('/en_US/_webmcp/wishlist_concierge/wishlist/1/optimize', 'POST', [], [], [], [], json_encode([
             'budget' => 15000,
         ], JSON_THROW_ON_ERROR));
         $request->headers->set('Content-Type', 'application/json');
@@ -138,7 +153,7 @@ final class ToolContractValidatorTest extends TestCase
 
     public function testInvalidJsonReturns400(): void
     {
-        $request = Request::create('/en_US/concierge/wishlist', 'POST', [], [], [], [], '{not valid json');
+        $request = Request::create('/en_US/_webmcp/wishlist_concierge/wishlist', 'POST', [], [], [], [], '{not valid json');
         $request->headers->set('Content-Type', 'application/json');
         $request->attributes->set('_route', 'bitexpert_concierge_wishlist_create');
 
@@ -149,6 +164,54 @@ final class ToolContractValidatorTest extends TestCase
         $response = $event->getResponse();
         self::assertNotNull($response);
         self::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+    }
+
+    public function testBulkAddDoesNotRequireWishlistIdInBody(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/items/bulk',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            json_encode([
+                'items' => [
+                    ['variantCode' => 'T_SHIRT_VARIANT', 'quantity' => 1],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_bulk_add');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        self::assertNull($event->getResponse());
+        self::assertTrue($request->attributes->has(ToolContractValidator::DTO_ATTRIBUTE));
+    }
+
+    public function testClearDoesNotRequireWishlistIdInBody(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/items/clear',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            '{}',
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_clear');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        self::assertNull($event->getResponse());
+        self::assertTrue($request->attributes->has(ToolContractValidator::DTO_ATTRIBUTE));
     }
 
     private function makeEvent(Request $request): RequestEvent

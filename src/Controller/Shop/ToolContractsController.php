@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
-use BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata;
+use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,24 +21,47 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ToolContractsController extends AbstractController
 {
     public function __construct(
-        private readonly ToolContractMetadata $metadata,
+        private readonly WebMcpToolCollector $collector,
     ) {
     }
 
-    #[Route('/concierge/contracts', name: 'bitexpert_concierge_tool_contracts', methods: ['GET'])]
-    public function list(): JsonResponse
+    #[Route('/_webmcp/wishlist_concierge/tools.json', name: 'bitexpert_concierge_tool_manifest', methods: ['GET'])]
+    public function manifest(): JsonResponse
     {
-        return $this->json($this->metadata->all());
+        return $this->manifestResponse(['tools' => $this->collector->collect()]);
     }
 
-    #[Route('/concierge/contracts/{tool}', name: 'bitexpert_concierge_tool_contract', methods: ['GET'])]
+    #[Route('/_webmcp/wishlist_concierge/contracts', name: 'bitexpert_concierge_tool_contracts', methods: ['GET'])]
+    public function list(): JsonResponse
+    {
+        return $this->manifestResponse(['tools' => $this->collector->collect()]);
+    }
+
+    #[Route('/_webmcp/wishlist_concierge/contracts/{tool}', name: 'bitexpert_concierge_tool_contract', methods: ['GET'])]
     public function show(string $tool): JsonResponse
     {
-        $contract = $this->metadata->contract($tool);
-        if (null === $contract) {
-            return $this->json(['error' => 'Unknown tool'], Response::HTTP_NOT_FOUND);
+        $tools = $this->collector->collect();
+
+        foreach ($tools as $entry) {
+            if ($entry['name'] === $tool) {
+                return $this->manifestResponse($entry);
+            }
         }
 
-        return $this->json($contract);
+        return $this->json(['error' => 'Unknown tool'], Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * The manifest is plain data (scalars, arrays, stdClass for empty JSON objects).
+     * We serialize with json_encode directly so that empty "properties" becomes an
+     * object "{}" rather than an array "[]" (which the Symfony Serializer would do).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function manifestResponse(array $data): JsonResponse
+    {
+        $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return new JsonResponse($json, Response::HTTP_OK, [], true);
     }
 }

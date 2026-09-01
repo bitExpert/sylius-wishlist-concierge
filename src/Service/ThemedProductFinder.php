@@ -205,6 +205,25 @@ final readonly class ThemedProductFinder
         return $this->channelContext->getChannel()->getCode();
     }
 
+    /**
+     * Fetch a single product by code for the given channel.
+     *
+     * @return array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}|null
+     */
+    public function findByCode(string $productCode, ?string $channelCode = null): ?array
+    {
+        $channel = $this->resolveChannel($channelCode);
+        $localeCode = $channel->getDefaultLocale()?->getCode() ?? 'en_US';
+
+        $product = $this->productRepository->findOneBy(['code' => $productCode, 'enabled' => true]);
+
+        if (null === $product) {
+            return null;
+        }
+
+        return $this->mapProduct($product, $channel, $localeCode);
+    }
+
     /** @return string[] */
     private function getTaxonCodes(ProductInterface $product): array
     {

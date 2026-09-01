@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\ProductSearchRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
@@ -30,7 +31,13 @@ final class ProductSearchController extends AbstractController
     ) {
     }
 
-    #[Route('/concierge/products/search', name: 'bitexpert_concierge_product_search', methods: ['GET'])]
+    #[WebMcpTool(
+        name: 'product.search',
+        description: 'Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
+        dtoClass: ProductSearchRequest::class,
+        readOnlyHint: true,
+    )]
+    #[Route('/_webmcp/wishlist_concierge/products/search', name: 'bitexpert_concierge_product_search', methods: ['GET'])]
     public function search(Request $request): JsonResponse
     {
         $dto = new ProductSearchRequest();
@@ -79,6 +86,30 @@ final class ProductSearchController extends AbstractController
             'theme' => $dto->theme,
             'count' => count($results),
             'products' => $results,
+        ]);
+    }
+
+    #[WebMcpTool(
+        name: 'product.get_details',
+        description: 'Get product details by productCode, including variants and pricing.',
+        readOnlyHint: true,
+        queryParams: ['channelCode' => 'FASHION_WEB'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/products/{productCode}', name: 'bitexpert_concierge_product_get_details', methods: ['GET'])]
+    public function getDetails(string $productCode, Request $request): JsonResponse
+    {
+        $channelCode = $request->query->get('channelCode');
+
+        $product = $this->themedProductFinder->findByCode($productCode, $channelCode);
+
+        if (null === $product) {
+            return $this->json(['error' => 'Product not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        return $this->json([
+            'channelCode' => $channelCode ?? $this->themedProductFinder->getDefaultChannelCode(),
+            'count' => 1,
+            'products' => [$product],
         ]);
     }
 }

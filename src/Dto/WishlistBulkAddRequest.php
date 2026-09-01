@@ -16,10 +16,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistBulkAddRequest
 {
-    #[Assert\NotNull]
-    #[Assert\Positive(message: 'Wishlist ID must be positive.')]
-    public int $wishlistId;
-
     #[Assert\NotBlank(message: 'Items array must not be empty.')]
     #[Assert\Count(min: 1, max: 200, minMessage: 'At least one item is required.')]
     /** @var array<int, WishlistBulkItem> */

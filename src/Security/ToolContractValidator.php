@@ -12,16 +12,9 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Security;
 
-use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistCreateRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistDeleteRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistRemoveItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
+use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -40,26 +33,11 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class ToolContractValidator
 {
-    /**
-     * Route name => input DTO used to validate the tool payload.
-     *
-     * @var array<string, class-string>
-     */
-    private const TOOL_CONTRACTS = [
-        'bitexpert_concierge_wishlist_create' => WishlistCreateRequest::class,
-        'bitexpert_concierge_wishlist_add_item' => WishlistAddItemRequest::class,
-        'bitexpert_concierge_wishlist_bulk_add' => WishlistBulkAddRequest::class,
-        'bitexpert_concierge_wishlist_clear' => WishlistClearRequest::class,
-        'bitexpert_concierge_wishlist_delete' => WishlistDeleteRequest::class,
-        'bitexpert_concierge_wishlist_remove_item_post' => WishlistRemoveItemRequest::class,
-        'bitexpert_concierge_wishlist_optimize' => BudgetOptimizeRequest::class,
-        'bitexpert_concierge_wishlist_move_to_cart' => MoveToCartRequest::class,
-    ];
-
     /** Request attribute under which the validated DTO is exposed to controllers. */
     public const DTO_ATTRIBUTE = '_webmcp_validated_dto';
 
     public function __construct(
+        private readonly WebMcpToolCollector $collector,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly ErrorResponseFactory $errorResponseFactory,
@@ -81,7 +59,7 @@ final class ToolContractValidator
         }
 
         $routeName = (string) $request->attributes->get('_route');
-        $dtoClass = self::TOOL_CONTRACTS[$routeName];
+        $dtoClass = $this->collector->routeDtoMap()[$routeName];
 
         try {
             $dto = $this->serializer->deserialize(
@@ -115,7 +93,9 @@ final class ToolContractValidator
     {
         $routeName = (string) $request->attributes->get('_route');
 
-        if ('' === $routeName || !isset(self::TOOL_CONTRACTS[$routeName])) {
+        $map = $this->collector->routeDtoMap();
+
+        if ('' === $routeName || !isset($map[$routeName])) {
             return false;
         }
 

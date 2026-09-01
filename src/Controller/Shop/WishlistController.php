@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
@@ -49,7 +49,13 @@ final class WishlistController extends AbstractController
     ) {
     }
 
-    #[Route('/concierge/wishlist', name: 'bitexpert_concierge_wishlist_create', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.create',
+        description: 'Create a new themed wishlist. The active channel is automatically inferred from the current Sylius context. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
+        dtoClass: WishlistCreateRequest::class,
+        emitsEvents: ['webmcp:wishlist-created'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist', name: 'bitexpert_concierge_wishlist_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         /** @var WishlistCreateRequest $dto */
@@ -76,7 +82,13 @@ final class WishlistController extends AbstractController
         return $response;
     }
 
-    #[Route('/concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_get', methods: ['GET'])]
+    #[WebMcpTool(
+        name: 'wishlist.get',
+        description: 'Get details of a single wishlist by id, including items with variantCode, productName, price and quantities.',
+        readOnlyHint: true,
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_get', methods: ['GET'])]
     public function get(int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -95,7 +107,12 @@ final class WishlistController extends AbstractController
         ]);
     }
 
-    #[Route('/concierge/wishlist', name: 'bitexpert_concierge_wishlist_list', methods: ['GET'])]
+    #[WebMcpTool(
+        name: 'wishlist.list',
+        description: 'List recent wishlists for the current channel. The active channel is automatically inferred from the current Sylius context. Use to discover existing wishlists before creating a new themed one.',
+        readOnlyHint: true,
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist', name: 'bitexpert_concierge_wishlist_list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         $channel = $this->channelContext->getChannel();
@@ -114,7 +131,16 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlists' => $arr, 'channelCode' => $channel->getCode()]);
     }
 
-    #[Route('/concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_delete', methods: ['DELETE'])]
+    #[WebMcpTool(
+        name: 'wishlist.delete',
+        description: 'Delete a wishlist permanently.',
+        dtoClass: WishlistDeleteRequest::class,
+        destructiveHint: true,
+        confirmMessage: 'Are you sure you want to permanently delete this wishlist? This cannot be undone.',
+        emitsEvents: ['webmcp:wishlist-deleted'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_delete', methods: ['DELETE'])]
     public function delete(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -137,7 +163,14 @@ final class WishlistController extends AbstractController
         return $this->json(['deleted' => true, 'wishlistId' => $id]);
     }
 
-    #[Route('/concierge/wishlist/{id}/items', name: 'bitexpert_concierge_wishlist_add_item', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.add_item',
+        description: 'Add a product variant to a wishlist by variantCode and quantity.',
+        dtoClass: WishlistAddItemRequest::class,
+        emitsEvents: ['webmcp:wishlist-updated'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/items', name: 'bitexpert_concierge_wishlist_add_item', methods: ['POST'])]
     public function addItem(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -165,7 +198,14 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[Route('/concierge/wishlist/{id}/items/bulk', name: 'bitexpert_concierge_wishlist_bulk_add', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.bulk_add',
+        description: 'Add multiple product variants to a wishlist in one call. Input is an array of {variantCode, quantity} objects.',
+        dtoClass: WishlistBulkAddRequest::class,
+        emitsEvents: ['webmcp:wishlist-updated'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/items/bulk', name: 'bitexpert_concierge_wishlist_bulk_add', methods: ['POST'])]
     public function bulkAddItems(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -194,7 +234,15 @@ final class WishlistController extends AbstractController
         ]);
     }
 
-    #[Route('/concierge/wishlist/{id}/items/clear', name: 'bitexpert_concierge_wishlist_clear', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.clear',
+        description: 'Remove all items from a wishlist in one call. Useful for resetting a themed list before re-curating.',
+        dtoClass: WishlistClearRequest::class,
+        destructiveHint: true,
+        emitsEvents: ['webmcp:wishlist-updated'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/items/clear', name: 'bitexpert_concierge_wishlist_clear', methods: ['POST'])]
     public function clearAllItems(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -218,7 +266,14 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[Route('/concierge/wishlist/{id}/items/{itemId}', name: 'bitexpert_concierge_wishlist_remove_item', methods: ['DELETE'])]
+    #[WebMcpTool(
+        name: 'wishlist.remove_item',
+        description: 'Remove an item from a wishlist by itemId.',
+        destructiveHint: true,
+        emitsEvents: ['webmcp:wishlist-updated'],
+        pathParams: ['wishlistId' => 'id', 'itemId' => 'itemId'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/items/{itemId}', name: 'bitexpert_concierge_wishlist_remove_item', methods: ['DELETE'])]
     public function removeItem(Request $request, int $id, int $itemId): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -242,7 +297,7 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[Route('/concierge/wishlist/{id}/items/remove', name: 'bitexpert_concierge_wishlist_remove_item_post', methods: ['POST'])]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/items/remove', name: 'bitexpert_concierge_wishlist_remove_item_post', methods: ['POST'])]
     public function postRemoveItem(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
@@ -269,7 +324,15 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[Route('/concierge/wishlist/{id}/optimize', name: 'bitexpert_concierge_wishlist_optimize', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.optimize_for_budget',
+        description: 'Optimize a wishlist for a budget (cents, USD). Applies eligible Sylius catalog promotions when includePromotions is true: returns chosen variantCodes, totalCents/savedCents, the list of active promotionsApplied and a human explanation. Use before move_to_cart to stay under budget.',
+        dtoClass: BudgetOptimizeRequest::class,
+        readOnlyHint: true,
+        emitsEvents: ['webmcp:promotions-applied'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/optimize', name: 'bitexpert_concierge_wishlist_optimize', methods: ['POST'])]
     public function optimize(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);

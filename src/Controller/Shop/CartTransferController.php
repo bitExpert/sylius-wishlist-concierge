@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
@@ -43,7 +44,15 @@ final class CartTransferController extends AbstractController
     ) {
     }
 
-    #[Route('/concierge/wishlist/{id}/move-to-cart', name: 'bitexpert_concierge_wishlist_move_to_cart', methods: ['POST'])]
+    #[WebMcpTool(
+        name: 'wishlist.move_to_cart',
+        description: 'Move wishlist items to cart (anon allowed). Optionally pass variantCodes to move subset, else all.',
+        dtoClass: MoveToCartRequest::class,
+        confirmMessage: 'Move items from this wishlist to cart?',
+        emitsEvents: ['webmcp:cart-created'],
+        pathParams: ['wishlistId' => 'id'],
+    )]
+    #[Route('/_webmcp/wishlist_concierge/wishlist/{id}/move-to-cart', name: 'bitexpert_concierge_wishlist_move_to_cart', methods: ['POST'])]
     public function moveToCart(Request $request, int $id, OrderRepositoryInterface $orderRepository): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);

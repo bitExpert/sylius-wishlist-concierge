@@ -5,31 +5,41 @@
     xsi:schemaLocation="http://symfony.com/schema/dic/services
         https://symfony.com/schema/dic/services/services-1.0.xsd">
 
+    <parameters>
+        <parameter key="bitexpert.concierge.controllers" type="collection">
+            <parameter>BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController</parameter>
+            <parameter>BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController</parameter>
+            <parameter>BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController</parameter>
+        </parameter>
+    </parameters>
+
     <services>
         <defaults autowire="true" autoconfigure="true" public="false" />
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator">
-            <argument type="service" id="validator" />
-            <argument type="service" id="serializer" />
-            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
-            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
-            <argument type="service" id="logger" />
-            <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="16" />
-        </service>
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector">
+            <argument>%bitexpert.concierge.controllers%</argument>
+        <argument type="service" id="validator.mapping.class_metadata_factory" />
+    </service>
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
+    <service id="BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator">
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector" />
+        <argument type="service" id="validator" />
+        <argument type="service" id="serializer" />
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
+        <argument type="service" id="logger" />
+        <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="16" />
+    </service>
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
+    <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter" />
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata">
-            <argument type="service" id="validator.mapping.class_metadata_factory" />
-        </service>
+    <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController"
-                 public="true">
-            <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ToolContractMetadata" />
-            <tag name="controller.service_arguments" />
-        </service>
+    <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController"
+             public="true">
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector" />
+        <tag name="controller.service_arguments" />
+    </service>
 
         <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder">
             <argument type="service" id="sylius.repository.product" />

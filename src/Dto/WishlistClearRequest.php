@@ -12,11 +12,10 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Dto;
 
-use Symfony\Component\Validator\Constraints as Assert;
-
 final class WishlistClearRequest
 {
-    #[Assert\NotNull]
-    #[Assert\Positive(message: 'Wishlist ID must be positive.')]
-    public int $wishlistId;
+    public function __construct(
+        public ?int $wishlistId = null,
+    ) {
+    }
 }
