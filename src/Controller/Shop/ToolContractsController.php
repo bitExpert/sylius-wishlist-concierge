@@ -31,32 +31,13 @@ final class ToolContractsController extends AbstractController
         return $this->manifestResponse(['tools' => $this->collector->collect()]);
     }
 
-    #[Route('/_webmcp/wishlist_concierge/contracts', name: 'bitexpert_concierge_tool_contracts', methods: ['GET'])]
-    public function list(): JsonResponse
-    {
-        return $this->manifestResponse(['tools' => $this->collector->collect()]);
-    }
-
-    #[Route('/_webmcp/wishlist_concierge/contracts/{tool}', name: 'bitexpert_concierge_tool_contract', methods: ['GET'])]
-    public function show(string $tool): JsonResponse
-    {
-        $tools = $this->collector->collect();
-
-        foreach ($tools as $entry) {
-            if ($entry['name'] === $tool) {
-                return $this->manifestResponse($entry);
-            }
-        }
-
-        return $this->json(['error' => 'Unknown tool'], Response::HTTP_NOT_FOUND);
-    }
-
     /**
      * The manifest is plain data (scalars, arrays, stdClass for empty JSON objects).
-     * We serialize with json_encode directly so that empty "properties" becomes an
+     * We serialize with json_encode directly so that empty "properties" become an
      * object "{}" rather than an array "[]" (which the Symfony Serializer would do).
      *
      * @param array<string, mixed> $data
+     * @throws \JsonException
      */
     private function manifestResponse(array $data): JsonResponse
     {
