@@ -3,7 +3,7 @@
  * Registers imperative tools via document.modelContext.registerTool.
  *
  * Tool DEFINITIONS (name, description, schema, route, annotations, ...) are
- * declared once on the Symfony controller methods via the #[WebMcpTool]
+ * declared once on the Symfony controller methods via the #[ModelContextTool]
  * attribute and served as a JSON manifest from /_webmcp/wishlist_concierge/tools.json.
  * This module fetches that manifest and wires each tool to a single generic
  * executor, so adding a tool only requires the PHP attribute — no JS here.

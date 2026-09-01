@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
-use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\ProductSearchRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ThemedProductFinder;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
@@ -31,7 +31,7 @@ final class ProductSearchController extends AbstractController
     ) {
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'product.search',
         description: 'Search products by theme and optional taxon/price filters. The active channel is automatically inferred from the current Sylius context. Returns products with code, name, variantCode, price (cents), taxonCodes for curation. Matches products tagged with the concierge_tags attribute (e.g. "gift", "summer") or whose name contains the theme string.',
         dtoClass: ProductSearchRequest::class,
@@ -75,11 +75,10 @@ final class ProductSearchController extends AbstractController
         ]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'product.get_details',
         description: 'Get product details by productCode, including variants and pricing.',
         readOnlyHint: true,
-        queryParams: ['channelCode' => 'FASHION_WEB'],
     )]
     #[Route('/_webmcp/wishlist_concierge/products/{productCode}', name: 'bitexpert_concierge_product_get_details', methods: ['GET'])]
     public function getDetails(string $productCode, Request $request): JsonResponse

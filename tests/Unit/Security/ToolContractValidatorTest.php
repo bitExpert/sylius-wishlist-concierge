@@ -10,7 +10,7 @@ use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
-use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,7 +33,7 @@ final class ToolContractValidatorTest extends TestCase
     {
         $serializer = new Serializer([new ObjectNormalizer(), new ArrayDenormalizer()], [new JsonEncoder()]);
         $validator = Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator();
-        $collector = new WebMcpToolCollector(
+        $collector = new ModelContextToolCollector(
             [
                 WishlistController::class,
                 ProductSearchController::class,

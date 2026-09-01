@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
-use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
@@ -44,7 +44,7 @@ final class CartTransferController extends AbstractController
     ) {
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.move_to_cart',
         description: 'Move wishlist items to cart (anon allowed). Optionally pass variantCodes to move subset, else all.',
         dtoClass: MoveToCartRequest::class,

@@ -13,14 +13,14 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Attribute;
 
 /**
- * Marks a controller method as an imperatively registered WebMCP tool.
+ * Marks a controller method as an imperatively registered ModelContext tool.
  *
- * The WebMcpToolCollector reads this attribute together with the Symfony
+ * The ModelContextToolCollector reads this attribute together with the Symfony
  * #[Route] attribute on the same method to build a machine-readable tool
  * manifest (name, description, inputSchema, annotations, route URL).
  */
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_METHOD)]
-final class WebMcpTool
+final class ModelContextTool
 {
     public function __construct(
         /** Unique tool identifier, e.g. "wishlist.create". */

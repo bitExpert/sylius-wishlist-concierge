@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
-use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ToolContractsController extends AbstractController
 {
     public function __construct(
-        private readonly WebMcpToolCollector $collector,
+        private readonly ModelContextToolCollector $collector,
     ) {
     }
 

@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Controller\Shop;
 
-use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
@@ -50,7 +50,7 @@ final class WishlistController extends AbstractController
     ) {
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.create',
         description: 'Create a new themed wishlist. The active channel is automatically inferred from the current Sylius context. Theme examples: birthday, gift, summer, casual, formal. Name should be human readable like "Birthday Wishlist — $150".',
         dtoClass: WishlistCreateRequest::class,
@@ -83,7 +83,7 @@ final class WishlistController extends AbstractController
         return $response;
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.get',
         description: 'Get details of a single wishlist by id, including items with variantCode, productName, price and quantities.',
         readOnlyHint: true,
@@ -108,7 +108,7 @@ final class WishlistController extends AbstractController
         ]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.list',
         description: 'List recent wishlists for the current channel. The active channel is automatically inferred from the current Sylius context. Use to discover existing wishlists before creating a new themed one.',
         readOnlyHint: true,
@@ -132,7 +132,7 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlists' => $arr, 'channelCode' => $channel->getCode()]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.delete',
         description: 'Delete a wishlist permanently.',
         dtoClass: WishlistDeleteRequest::class,
@@ -164,7 +164,7 @@ final class WishlistController extends AbstractController
         return $this->json(['deleted' => true, 'wishlistId' => $id]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.add_item',
         description: 'Add a product variant to a wishlist by variantCode and quantity.',
         dtoClass: WishlistAddItemRequest::class,
@@ -199,7 +199,7 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.bulk_add',
         description: 'Add multiple product variants to a wishlist in one call. Input is an array of {variantCode, quantity} objects.',
         dtoClass: WishlistBulkAddRequest::class,
@@ -235,7 +235,7 @@ final class WishlistController extends AbstractController
         ]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.clear',
         description: 'Remove all items from a wishlist in one call. Useful for resetting a themed list before re-curating.',
         dtoClass: WishlistClearRequest::class,
@@ -267,7 +267,7 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.remove_item',
         description: 'Remove an item from a wishlist by itemId.',
         destructiveHint: true,
@@ -325,7 +325,7 @@ final class WishlistController extends AbstractController
         return $this->json(['wishlist' => $this->wishlistManager->toArray($wishlist)]);
     }
 
-    #[WebMcpTool(
+    #[ModelContextTool(
         name: 'wishlist.optimize_for_budget',
         description: 'Optimize a wishlist for a budget (cents, USD). Applies eligible Sylius catalog promotions when includePromotions is true: returns chosen variantCodes, totalCents/savedCents, the list of active promotionsApplied and a human explanation. Use before move_to_cart to stay under budget.',
         dtoClass: BudgetOptimizeRequest::class,

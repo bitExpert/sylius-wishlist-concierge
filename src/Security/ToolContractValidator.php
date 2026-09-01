@@ -14,7 +14,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Security;
 
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
-use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -37,7 +37,7 @@ final class ToolContractValidator
     public const DTO_ATTRIBUTE = '_webmcp_validated_dto';
 
     public function __construct(
-        private readonly WebMcpToolCollector $collector,
+        private readonly ModelContextToolCollector $collector,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly ErrorResponseFactory $errorResponseFactory,

@@ -16,13 +16,13 @@
     <services>
         <defaults autowire="true" autoconfigure="true" public="false" />
 
-        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector">
+        <service id="BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector">
             <argument>%bitexpert.concierge.controllers%</argument>
         <argument type="service" id="validator.mapping.class_metadata_factory" />
     </service>
 
     <service id="BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator">
-        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector" />
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector" />
         <argument type="service" id="validator" />
         <argument type="service" id="serializer" />
         <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory" />
@@ -37,7 +37,7 @@
 
     <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ToolContractsController"
              public="true">
-        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector" />
+        <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector" />
         <tag name="controller.service_arguments" />
     </service>
 

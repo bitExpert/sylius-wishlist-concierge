@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
-use BitExpert\SyliusWishlistConciergePlugin\Attribute\WebMcpTool;
+use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
@@ -20,15 +20,15 @@ use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
 use Symfony\Component\Validator\Mapping\PropertyMetadataInterface;
 
 /**
- * Collects WebMCP tool definitions from controller methods by reading
- * the #[WebMcpTool] and #[Route] attributes via PHP reflection.
+     * Collects ModelContext tool definitions from controller methods by reading
+     * the #[ModelContextTool] and #[Route] attributes via PHP reflection.
  *
  * The resulting manifest is the single source of truth consumed by the
  * JS frontend and the contract endpoints.
  */
-final class WebMcpToolCollector
+final class ModelContextToolCollector
 {
-    /** @var list<array{tool: WebMcpTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
+    /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
     private ?array $cache = null;
 
     /**
@@ -126,7 +126,7 @@ final class WebMcpToolCollector
     }
 
     /**
-     * @return list<array{tool: WebMcpTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>
+     * @return list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>
      */
     private function resolveAll(): array
     {
@@ -145,8 +145,8 @@ final class WebMcpToolCollector
             $classPrefix = $this->resolveClassPrefix($reflection);
 
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-                foreach ($method->getAttributes(WebMcpTool::class) as $attr) {
-                    /** @var WebMcpTool $tool */
+                foreach ($method->getAttributes(ModelContextTool::class) as $attr) {
+                    /** @var ModelContextTool $tool */
                     $tool = $attr->newInstance();
                     $route = $this->resolveRoute($method, $classPrefix);
 
@@ -204,7 +204,7 @@ final class WebMcpToolCollector
     /**
      * @return array<string, bool>
      */
-    private function annotations(WebMcpTool $tool): array
+    private function annotations(ModelContextTool $tool): array
     {
         $annotations = [];
         if ($tool->readOnlyHint) {
@@ -228,7 +228,7 @@ final class WebMcpToolCollector
     /**
      * @return array<string, mixed>
      */
-    private function resolveInputSchema(WebMcpTool $tool): array
+    private function resolveInputSchema(ModelContextTool $tool): array
     {
         if (null === $tool->dtoClass) {
             return ['type' => 'object', 'properties' => new \stdClass()];

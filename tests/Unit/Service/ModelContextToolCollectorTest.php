@@ -7,19 +7,19 @@ namespace Tests\BitExpert\SyliusWishlistConciergePlugin\Unit\Service;
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController;
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController;
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController;
-use BitExpert\SyliusWishlistConciergePlugin\Service\WebMcpToolCollector;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Validator\Mapping\Factory\LazyLoadingMetadataFactory;
 
-final class WebMcpToolCollectorTest extends TestCase
+final class ModelContextToolCollectorTest extends TestCase
 {
-    private WebMcpToolCollector $collector;
+    private ModelContextToolCollector $collector;
 
     protected function setUp(): void
     {
         $loader = new AttributeLoader();
-        $this->collector = new WebMcpToolCollector(
+        $this->collector = new ModelContextToolCollector(
             [
                 WishlistController::class,
                 ProductSearchController::class,
