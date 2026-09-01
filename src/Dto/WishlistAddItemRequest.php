@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistAddItemRequest
 {
+    use DtoFromRequest;
+
     #[Assert\NotBlank(message: 'variantCode must not be blank.')]
     #[Assert\Length(max: 255)]
     #[Assert\Regex(pattern: '/^[A-Za-z0-9._\-]+$/', message: 'Invalid variant code format.')]

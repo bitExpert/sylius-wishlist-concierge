@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class MoveToCartRequest
 {
+    use DtoFromRequest;
+
     /**
      * @var string[]|null
      */

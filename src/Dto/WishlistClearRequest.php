@@ -14,6 +14,8 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Dto;
 
 final class WishlistClearRequest
 {
+    use DtoFromRequest;
+
     public function __construct(
         public ?int $wishlistId = null,
     ) {

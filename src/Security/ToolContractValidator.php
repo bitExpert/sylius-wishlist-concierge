@@ -59,14 +59,11 @@ final class ToolContractValidator
         }
 
         $routeName = (string) $request->attributes->get('_route');
+        /** @var class-string $dtoClass */
         $dtoClass = $this->collector->routeDtoMap()[$routeName];
 
         try {
-            $dto = $this->serializer->deserialize(
-                $request->getContent() ?: '{}',
-                $dtoClass,
-                'json',
-            );
+            $dto = $dtoClass::fromRequest($request, $this->serializer);
         } catch (\Exception $e) {
             $this->logger->info('WebMCP tool rejected: invalid JSON payload', [
                 'route' => $routeName,

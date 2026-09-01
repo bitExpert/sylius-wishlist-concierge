@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistDeleteRequest
 {
+    use DtoFromRequest;
+
     #[Assert\NotNull]
     #[Assert\Positive(message: 'Wishlist ID must be positive.')]
     public int $wishlistId;

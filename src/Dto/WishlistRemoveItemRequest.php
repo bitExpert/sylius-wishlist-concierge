@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistRemoveItemRequest
 {
+    use DtoFromRequest;
+
     #[Assert\NotNull(message: 'itemId must not be null.')]
     #[Assert\Positive(message: 'itemId must be positive.')]
     public int $itemId;

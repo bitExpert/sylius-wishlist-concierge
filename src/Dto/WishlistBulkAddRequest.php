@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistBulkAddRequest
 {
+    use DtoFromRequest;
+
     #[Assert\NotBlank(message: 'Items array must not be empty.')]
     #[Assert\Count(min: 1, max: 200, minMessage: 'At least one item is required.')]
     /** @var array<int, WishlistBulkItem> */

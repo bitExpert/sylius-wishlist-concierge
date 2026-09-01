@@ -34,6 +34,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class WishlistController extends AbstractController
@@ -98,7 +99,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanView($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -150,7 +151,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -180,7 +181,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -215,7 +216,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -252,7 +253,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -283,7 +284,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -307,7 +308,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanModify($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
@@ -342,7 +343,7 @@ final class WishlistController extends AbstractController
 
         try {
             $this->accessChecker->assertCanView($wishlist);
-        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        } catch (AccessDeniedHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 

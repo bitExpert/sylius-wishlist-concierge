@@ -16,6 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class WishlistCreateRequest
 {
+    use DtoFromRequest;
+
     #[Assert\NotBlank(message: 'Wishlist name must not be blank.')]
     #[Assert\Length(max: 100, maxMessage: 'Name must be at most {{ limit }} characters.')]
     public string $name = 'Gift Wishlist';
