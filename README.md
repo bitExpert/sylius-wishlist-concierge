@@ -1,20 +1,19 @@
-# Wishlist Concierge — Sylius WebMCP
+# Wishlist Concierge — A WebMCP implementation for Sylius
 
-<p align="center">
-  <a href="https://sylius.com" target="_blank"><img alt="Sylius" src="https://media.sylius.com/sylius-logo-800.png" width="180"></a>
-</p>
+![Wishlist Concierge](docs/assets/wishlist_concierge.png)
 
 <p align="center">
   <a href="https://sylius.com"><img alt="Sylius 2" src="https://img.shields.io/badge/Sylius-2.0-1ab150"></a>
-  <a href="https://github.com/Sylius/WishlistPlugin"><img alt="WishlistPlugin" src="https://img.shields.io/badge/WishlistPlugin-1.3-blue"></a>
   <a href="https://webmachinelearning.github.io/webmcp/"><img alt="WebMCP" src="https://img.shields.io/badge/WebMCP-Chrome%20149%2B%20%7C%20ChatGPT%20in--app-orange"></a>
-  <a href="https://ddev.com"><img alt="DDEV" src="https://img.shields.io/badge/DDEV-wishlist--concierge.ddev.site-93c93e"></a>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
 **Agent + human co-curate themed, budget-aware gift registries on Sylius.** Instead of clicking 30 filters, you tell your agent *“birthday for my nephew”* — it searches taxons, builds a wishlist, optimizes for budget with Sylius `ChannelPricing`, and moves the best fit to cart after your confirm.
 
-**Demo (live):** `https://wishlist-concierge.ddev.site/en_US/` · **Video:** ⚠️ **TODO — insert <3 min YouTube public link required by [webmcp.devpost.com/rules](https://webmcp.devpost.com/rules)** · **Devpost:** `https://webmcp.devpost.com` · **Spec:** `https://webmachinelearning.github.io/webmcp/`
+ - Demo: `https://wishlist-concierge.ddev.site/en_US/`
+ - Video: ⚠️TODO 
+ - Devpost: `https://webmcp.devpost.com`
+ - WebMCP Spec: `https://webmachinelearning.github.io/webmcp/`
 
 > **Contest snippet required by judges** — this repo contains `document.modelContext.registerTool` (see `assets/shop/webmcp/registry.js:37`):
 > ```js
@@ -27,18 +26,6 @@
 > ```
 
 ---
-
-## Why WebMCP?
-
-| Actuation (DOM scraping)                                                                     | WebMCP tool (structured)                                                                                                                                                        |
-|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Agent guesses `button[type=submit]` meaning, scrapes `div.price`, hallucinates variant codes | Website **declares** purpose: `product.search`, `wishlist.optimize_for_budget` with JSON Schema; agent calls `variantCode:"Ethereal_Drift_T_Shirt-variant-0"` deterministically |
-| 15 steps, each open to interpretation                                                        | 1 contract per capability; shared `Channel`/`Locale` state                                                                                                                      |
-| Brittle on theme change                                                                      | Progressive enhancement — works without WebMCP, better *with*                                                                                                                   |
-
-Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an MCP server in client-side JS. Implementations: `assets/shop/webmcp/registry.js:30` `registerAll()` registers 12 imperative tools with `readOnlyHint` vs human-confirm on money.
-
-**Why this is a strong fit:** Gift curation is *combinatorial* (taxon + price + channel + budget) + *subjective* (human taste). Agent does math, human does taste — the classic “better together” the challenge asks for.
 
 ## What People + Agents Can Do Together
 
@@ -54,91 +41,47 @@ Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an
 **Story 3 — Share & Checkout**
 > `wishlist.move_to_cart {wishlistId:2}` → `CartTransferController.php:21` triggers `window.confirm("Move 1 item ($17.03) to cart?")` at `registry.js:196` (spec Mitigation 6.3.2 — agent cannot finalize without human). `OrderFactory` + `OrderProcessor` → `cartToken` + `/en_US/cart`. Anon allowed (`FASHION_WEB` gift registries are shareable via `WishlistAccessChecker.php:21` — owned lists still `403`).
 
-## 90-Second Demo (no screenshots, copy-paste)
-
-**Prereq:** Chrome 149+ `chrome://flags/#enable-webmcp-testing` → Enabled + relaunch, *or* ChatGPT desktop → in-app browser (WebMCP on by default). Install **Model Context Tool Inspector** extension to see tools.
-
-**Agent prompts (Inspector or `document.modelContext` console):**
-```
-wishlist.create {"name":"Birthday Wishlist — $150","theme":"birthday"}
-product.search {"theme":"gift","limit":4}
-wishlist.add_item {"wishlistId":2,"variantCode":"Ethereal_Drift_T_Shirt-variant-0","quantity":1}
-wishlist.optimize_for_budget {"wishlistId":2,"budgetCents":15000}
-wishlist.move_to_cart {"wishlistId":2}
-```
-
-**curl fallback (proves execution without browser):**
-```bash
-curl -s "https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/products/search?theme=gift&limit=2" | python3 -m json.tool
-# → {"channelCode":"FASHION_WEB","count":2,"products":[{"code":"...","variantCode":"...","price":7589}]}
-
-cat > /tmp/new.json <<JSON
-{"name":"Test Validate — birthday","theme":"birthday"}
-JSON
-curl -s -X POST https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/wishlist -H "Content-Type: application/json" -d @/tmp/new.json | python3 -m json.tool
-# → {"wishlist":{"id":2,"token":"...","name":"Test Validate — birthday",...}}
-
-# Validation demo (DTO constraints at src/Dto/*.php, enforced server-side by ToolContractValidator):
-cat > /tmp/bad.json <<JSON
-{"name":"","theme":""}
-JSON
-curl -s -X POST https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/wishlist -H "Content-Type: application/json" -d @/tmp/bad.json | python3 -m json.tool
-# → {"error":"Validation failed","violations":[{"property":"name","message":"Wishlist name must not be blank."}]}
-
-# Channel validation (ThemedProductFinder.php:151 throws NotFoundHttpException → JSON 404 at ProductSearchController.php:62):
-curl -s "https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/products/search?theme=gift" | python3 -m json.tool
-# → {"error":"Channel \"FOOBAR\" not found. Available: FASHION_WEB"}
-
-# Optimize & cart (quantity-aware at BudgetOptimizer.php:42):
-cat > /tmp/opt.json <<JSON
-{"budgetCents":8000}
-JSON
-curl -s -X POST https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/wishlist/2/optimize -H "Content-Type: application/json" -d @/tmp/opt.json | python3 -m json.tool
-curl -s -X POST https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_concierge/wishlist/2/move-to-cart -H "Content-Type: application/json" -d "{}" | python3 -m json.tool
-# → {"cartToken":"...","total":16418,"cartUrl":"/en_US/cart"}
-```
-
 ## Architecture
 
 ```mermaid
 graph TD
-  subgraph Frontend
-    Shop[Shop Twig Hook sylius_shop.base.footer.content<br/>templates/shop/webmcp/status.html.twig]
-    Shop -->|encore_entry| Entry[assets/shop/entrypoint.js<br/>plugin-shop-entry.js]
-    Entry --> Registry[assets/shop/webmcp/registry.js<br/>registerAll() → 8× document.modelContext.registerTool]
-    Entry --> Toolbox[toolbox_controller.js<br/>Stimulus: discoverability modal, run forms, spinner, toasts]
-    Entry --> Toast[toast_controller.js<br/>listens webmcp:toast → Bootstrap toast]
-  end
+   subgraph Frontend
+      Shop["Shop Twig Hook sylius_shop.base.footer.content<br/>templates/shop/webmcp/status.html.twig"]
+      Shop -->|encore_entry| Entry["assets/shop/entrypoint.js<br/>plugin-shop-entry.js"]
+      Entry --> Registry["assets/shop/webmcp/registry.js<br/>registerAll() → 12× document.modelContext.registerTool"]
+      Entry --> Toolbox["toolbox_controller.js<br/>Stimulus: discoverability modal, run forms, spinner, toasts"]
+      Entry --> Toast["toast_controller.js<br/>listens webmcp:toast → Bootstrap toast"]
+   end
 
-  subgraph "kernel.request validation"
-    TCV[ToolContractValidator.php<br/>kernel.request listener, priority 16<br/>deserializes JSON → DTO → validates constraints]
-  end
+   subgraph Kernel["kernel.request validation"]
+      TCV["ToolContractValidator.php<br/>kernel.request listener, priority 16<br/>deserializes JSON → DTO → validates constraints"]
+   end
 
-  subgraph Backend
-    Registry -->|fetch /en_US/_webmcp/wishlist_concierge/*| TCV
-    TCV --> Ctrl{Controller Shop}
-    Ctrl --> PS[ProductSearchController.php<br/>GET /products/search]
-    Ctrl --> WL[WishlistController.php<br/>POST /wishlist, GET /wishlist/{id}, POST /wishlist/{id}/items, POST /wishlist/{id}/optimize]
-    Ctrl --> CT[CartTransferController.php<br/>POST /wishlist/{id}/move-to-cart]
-    Ctrl --> TC[ToolContractsController.php<br/>GET /_webmcp/wishlist_concierge/contracts]
-    PS --> TF[ThemedProductFinder.php<br/>QB innerJoin p.channels ch<br/>innerJoin t.code IN (:taxonCodes)]
-    WL --> WM[WishlistManager.php<br/>sylius_wishlist_plugin.factory.wishlist]
-    WL --> BO[BudgetOptimizer.php<br/>quantity * ChannelPricing knapsack]
-    BO --> EP[EligiblePromotionsProvider.php<br/>active CatalogPromotions per channel]
-    CT --> OF[Factory sylius.factory.order<br/>+ order_processing.order_processor]
-    TC --> TM[ToolContractMetadata.php<br/>introspects DTO constraints → JSON Schema]
-  end
+   subgraph Backend
+      Registry -->|fetch /en_US/_webmcp/wishlist_concierge/*| TCV
+      TCV --> Ctrl{"Controller Shop"}
+      Ctrl --> PS["ProductSearchController.php<br/>GET /products/search"]
+      Ctrl --> WL["WishlistController.php<br/>POST /wishlist<br/>GET /wishlist/{id}<br/>POST /wishlist/{id}/items<br/>POST /wishlist/{id}/items/bulk<br/>POST /wishlist/{id}/items/clear<br/>DELETE /wishlist/{id}<br/>POST /wishlist/{id}/optimize"]
+      Ctrl --> CT["CartTransferController.php<br/>POST /wishlist/{id}/move-to-cart"]
+      Ctrl --> TC["ToolContractsController.php<br/>GET /_webmcp/wishlist_concierge/contracts"]
+      PS --> TF["ThemedProductFinder.php<br/>QB innerJoin p.channels ch<br/>innerJoin t.code IN (:taxonCodes)"]
+      WL --> WM["WishlistManager.php<br/>sylius_wishlist_plugin.factory.wishlist"]
+      WL --> BO["BudgetOptimizer.php<br/>quantity * ChannelPricing knapsack"]
+      BO --> EP["EligiblePromotionsProvider.php<br/>active CatalogPromotions per channel"]
+      CT --> OF["Factory sylius.factory.order<br/>+ order_processing.order_processor"]
+      TC --> TM["ToolContractMetadata.php<br/>introspects DTO constraints → JSON Schema"]
+   end
 
-  subgraph "Supporting services"
-    EF[ErrorResponseFactory.php<br/>consistent {error,message,violations?}]
-    VF[ValidationErrorFormatter.php<br/>ConstraintViolation → [{field,message}]]
-    TCV --> EF
-    TCV --> VF
-  end
+   subgraph Supporting["Supporting services"]
+      EF["ErrorResponseFactory.php<br/>consistent {error,message,violations?}"]
+      VF["ValidationErrorFormatter.php<br/>ConstraintViolation → [{field,message}]"]
+      TCV --> EF
+      TCV --> VF
+   end
 
-  TF --> Prod[(Sylius Product<br/>ChannelPricing / Taxon)]
-  WM --> WLDB[(WishlistPlugin<br/>Wishlist / WishlistProduct)]
-  OF --> Cart[(Order<br/>Token)]
+   TF --> Prod[("Sylius Product<br/>ChannelPricing / Taxon")]
+   WM --> WLDB[("WishlistPlugin<br/>Wishlist / WishlistProduct")]
+   OF --> Cart[("Order<br/>Token")]
 ```
 
 **Folder map**
@@ -147,7 +90,7 @@ graph TD
 config/packages/bitexpert_wishlist_concierge.yaml  → themes param
 config/services/webmcp.yaml                         → services private:true, controllers public:true
 config/twig_hooks/shop.yaml                         → sylius_shop.base.footer.content badge
-src/Dto/* (5)                                       → #[Assert] validation (WishlistCreateRequest, WishlistAddItemRequest, BudgetOptimizeRequest, MoveToCartRequest, ProductSearchRequest)
+src/Dto/* (9)                                       → #[Assert] validation (WishlistCreateRequest, WishlistAddItemRequest, WishlistRemoveItemRequest, WishlistBulkAddRequest, WishlistClearRequest, WishlistDeleteRequest, BudgetOptimizeRequest, MoveToCartRequest, ProductSearchRequest)
 src/Security/ToolContractValidator.php              → kernel.request listener: deserializes JSON → DTO → validates constraints → 422 on failure
 src/Security/WishlistAccessChecker.php              → shareable anon vs owned 403
 src/Controller/Shop/ToolContractsController.php     → GET /_webmcp/wishlist_concierge/contracts, GET /_webmcp/wishlist_concierge/contracts/{tool} — machine-readable JSON Schema
@@ -356,8 +299,8 @@ List recent wishlists for the current channel.
 
 The repository exposes the `inputSchema` of every imperative tool as **JSON-Schema** over HTTP, introspected directly from the Symfony Validator constraints on each tool's input DTO (`ToolContractMetadata`). This makes the "structured contract" declared via WebMCP discoverable by any API consumer or test client, and guarantees the documented schema and the server-side validation are always in sync.
 
-| Endpoint                                | Description                                                          |
-|-----------------------------------------|----------------------------------------------------------------------|
+| Endpoint                                                 | Description                                                          |
+|----------------------------------------------------------|----------------------------------------------------------------------|
 | `GET /en_US/_webmcp/wishlist_concierge/contracts`        | List all tool contracts, e.g. `{tools:[{name,dto,inputSchema}]}`     |
 | `GET /en_US/_webmcp/wishlist_concierge/contracts/{tool}` | Single contract for a tool, e.g. `/contracts/wishlist.create_themed` |
 
@@ -462,14 +405,6 @@ curl -s -X POST https://wishlist-concierge.ddev.site/en_US/_webmcp/wishlist_conc
 # → {"error":"Validation failed","message":"The tool input does not satisfy its declared contract.",
 #    "violations":[{"field":"name","message":"Wishlist name must not be blank."}, ...]}
 ```
-
-## Roadmap
-
-* 🚧 `Money` Value Object (`sylius/money` post-contest, currently `int` cents with `TODO` at `BudgetOptimizer.php:25`)
-* ✅ `CatalogPromotion` integration in `optimize` — `BudgetOptimizer` uses Sylius's `ProductVariantPricesCalculator` and reports active `CatalogPromotion`s via `EligiblePromotionsProvider` (`src/Service/Promotion/EligiblePromotionsProvider.php`). Honors the `includePromotions` flag (when disabled, the pre-discount original price is used, so promo savings are not counted).
-* ✅ Server-side tool contract validation — `ToolContractValidator` + `ToolContractMetadata` expose and enforce each tool's `inputSchema` (`/_webmcp/wishlist_concierge/contracts`) and return a deterministic `422` on violation.
-* ✅ Discoverability UI — Stimulus `toolbox_controller.js` lists and runs every WebMCP tool from a single source of truth (`TOOLS`), with spinner, run button, and toast feedback.
-* 🚧 Shared CMS story page generation (`sylius/cms-plugin` `Page` with `ProductsCarousel` from `Wishlist`)
 
 ## License
 
