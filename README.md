@@ -36,7 +36,7 @@
 | 15 steps, each open to interpretation                                                        | 1 contract per capability; shared `Channel`/`Locale` state                                                                                                                      |
 | Brittle on theme change                                                                      | Progressive enhancement — works without WebMCP, better *with*                                                                                                                   |
 
-Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an MCP server in client-side JS. Implementations: `assets/shop/webmcp/registry.js:30` `registerAll()` registers 8 imperative tools with `readOnlyHint` vs human-confirm on money.
+Spec: `webmachinelearning.github.io/webmcp` Abstract — WebMCP makes the web an MCP server in client-side JS. Implementations: `assets/shop/webmcp/registry.js:30` `registerAll()` registers 12 imperative tools with `readOnlyHint` vs human-confirm on money.
 
 **Why this is a strong fit:** Gift curation is *combinatorial* (taxon + price + channel + budget) + *subjective* (human taste). Agent does math, human does taste — the classic “better together” the challenge asks for.
 
@@ -316,6 +316,42 @@ List recent wishlists for the current channel.
 }
 ```
 
+### `wishlist.delete`
+```json
+{
+  "name": "wishlist.delete",
+  "description": "Delete a wishlist permanently.",
+  "inputSchema": {"type": "object","properties": {}},
+  "confirmMessage": "Are you sure you want to permanently delete this wishlist? This cannot be undone.",
+  "destructiveHint": true,
+  "emitsEvents": ["webmcp:wishlist-deleted"],
+  "pathParams": {"wishlistId":"id"}
+}
+```
+
+### `wishlist.bulk_add`
+```json
+{
+  "name": "wishlist.bulk_add",
+  "description": "Add multiple product variants to a wishlist in one call. Input is an array of {variantCode, quantity} objects.",
+  "inputSchema": {"type": "object","properties": {"wishlistId": {"type": "integer"},"items": {"type": "array","items": {"type": "object","properties": {"variantCode": {"type": "string"},"quantity": {"type": "integer","default": 1}},"required": ["variantCode"]}}},"required": ["wishlistId","items"]},
+  "emitsEvents": ["webmcp:wishlist-updated"],
+  "pathParams": {"wishlistId":"id"}
+}
+```
+
+### `wishlist.clear`
+```json
+{
+  "name": "wishlist.clear",
+  "description": "Remove all items from a wishlist in one call. Useful for resetting a themed list before re-curating.",
+  "inputSchema": {"type": "object","properties": {"wishlistId": {"type": "integer"}},"required": ["wishlistId"]},
+  "destructiveHint": true,
+  "emitsEvents": ["webmcp:wishlist-updated"],
+  "pathParams": {"wishlistId":"id"}
+}
+```
+
 ## Machine-Readable Tool Contracts
 
 The repository exposes the `inputSchema` of every imperative tool as **JSON-Schema** over HTTP, introspected directly from the Symfony Validator constraints on each tool's input DTO (`ToolContractMetadata`). This makes the "structured contract" declared via WebMCP discoverable by any API consumer or test client, and guarantees the documented schema and the server-side validation are always in sync.
@@ -355,7 +391,7 @@ composer require bitexpert/sylius-wishlist-concierge-plugin
    ddev exec bash -c "cd vendor/sylius/test-application && yarn build"
    # → public/build/app/shop/plugin-shop-entry.*.js (now 87.5 KiB)
    ```
-6. Open `https://wishlist-concierge.ddev.site/en_US/` → footer badge `WebMCP: 8 tools ready` (via `templates/shop/webmcp/status.html.twig:1` hook `sylius_shop.base.footer.content`).
+6. Open `https://wishlist-concierge.ddev.site/en_US/` → footer badge `WebMCP: 12 tools ready` (via `templates/shop/webmcp/status.html.twig:1` hook `sylius_shop.base.footer.content`).
 
 **Traditional (no DDEV):**
 ```bash
@@ -376,7 +412,7 @@ ddev exec vendor/bin/phpunit tests/Unit/Service/BudgetOptimizerTest.php --testdo
 ```bash
 playwright-cli -s=wishlist open https://wishlist-concierge.ddev.site/en_US/ --ignore-https-errors
 playwright-cli -s=wishlist eval "await document.modelContext.getTools().then(t=>t.map(x=>x.name))"
-# → ["wishlist.list","wishlist.get","wishlist.create","product.search","product.get_details","wishlist.add_item","wishlist.remove_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
+# → ["wishlist.list","wishlist.get","wishlist.create","wishlist.delete","wishlist.bulk_add","wishlist.clear","product.search","product.get_details","wishlist.add_item","wishlist.remove_item","wishlist.optimize_for_budget","wishlist.move_to_cart"]
 playwright-cli -s=wishlist eval "await document.modelContext.executeTool((await document.modelContext.getTools()).find(t=>t.name==='product.search'),{theme:'gift',limit:2})"
 ```
 
