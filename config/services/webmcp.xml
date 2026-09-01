@@ -82,6 +82,7 @@
             <argument type="service" id="sylius.context.channel" />
             <argument type="service" id="doctrine.orm.entity_manager" />
             <argument type="service" id="BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker" />
+            <argument type="service" id="sylius_wishlist_plugin.resolver.wishlist_cookie_token_resolver" />
             <tag name="controller.service_arguments" />
         </service>
 

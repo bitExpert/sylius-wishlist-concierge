@@ -26,8 +26,11 @@ use BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer;
 use BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
+use Sylius\Component\Core\Model\ShopUserInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
+use Sylius\WishlistPlugin\Resolver\WishlistCookieTokenResolverInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,6 +45,7 @@ final class WishlistController extends AbstractController
         private readonly ChannelContextInterface $channelContext,
         private readonly EntityManagerInterface $entityManager,
         private readonly WishlistAccessChecker $accessChecker,
+        private readonly WishlistCookieTokenResolverInterface $cookieTokenResolver,
     ) {
     }
 
@@ -55,9 +59,21 @@ final class WishlistController extends AbstractController
         $this->entityManager->persist($wishlist);
         $this->entityManager->flush();
 
-        return $this->json([
+        $response = $this->json([
             'wishlist' => $this->wishlistManager->toArray($wishlist),
         ], Response::HTTP_CREATED);
+
+        // Anonymous wishlists are accessed via the cookie token, mirroring the
+        // Sylius WishlistPlugin flow (shared cookie name = interchangeable).
+        if (null === $wishlist->getShopUser()) {
+            $response->headers->setCookie(new Cookie(
+                'wishlist_cookie_token',
+                $wishlist->getToken(),
+                strtotime('+1 year'),
+            ));
+        }
+
+        return $response;
     }
 
     #[Route('/concierge/wishlist/{id}', name: 'bitexpert_concierge_wishlist_get', methods: ['GET'])]
@@ -83,9 +99,16 @@ final class WishlistController extends AbstractController
     public function list(): JsonResponse
     {
         $channel = $this->channelContext->getChannel();
-        $wishlists = $this->wishlistRepository->findBy(['channel' => $channel], ['createdAt' => 'DESC'], 5);
-        // For anon, filter is still applied via access checker in real usage, but list is intentionally limited
-        // to avoid leaking cross-user tokens. In production, filter by cookie token.
+        $user = $this->getUser();
+
+        if ($user instanceof ShopUserInterface) {
+            $wishlists = $this->wishlistRepository->findAllByShopUserAndChannel($user, $channel);
+        } else {
+            // Anonymous: only wishlists whose token matches the visitor's cookie.
+            $cookieToken = $this->cookieTokenResolver->resolve();
+            $wishlists = $this->wishlistRepository->findAllByAnonymousAndChannel($cookieToken, $channel);
+        }
+
         $arr = array_map(fn($w) => $this->wishlistManager->toArray($w), $wishlists);
 
         return $this->json(['wishlists' => $arr, 'channelCode' => $channel->getCode()]);

@@ -159,7 +159,6 @@ final readonly class WishlistManager
 
         return [
             'id' => $wishlist->getId(),
-            'token' => $wishlist->getToken(),
             'name' => $wishlist->getName(),
             'channelCode' => $wishlist->getChannel()?->getCode(),
             'items' => $products,

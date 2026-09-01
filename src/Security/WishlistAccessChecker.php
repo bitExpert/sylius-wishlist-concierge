@@ -41,13 +41,12 @@ final readonly class WishlistAccessChecker
             return;
         }
 
-        // Anonymous wishlist — for gift concierge, wishlists are shareable via ID/token
-        // Allow access for any anon (contest demo requires shareable gift registries).
-        // For stricter privacy, uncomment token check below:
-        // $cookieToken = $this->cookieTokenResolver->resolve();
-        // if ($wishlist->getToken() !== $cookieToken) {
-        //     throw new AccessDeniedHttpException('Wishlist token does not match your session.');
-        // }
+        // Anonymous wishlist — only the visitor whose cookie token matches the
+        // wishlist token may view it. This mirrors the Sylius WishlistPlugin flow.
+        $cookieToken = $this->cookieTokenResolver->resolve();
+        if ($wishlist->getToken() !== $cookieToken) {
+            throw new AccessDeniedHttpException('Wishlist token does not match your session.');
+        }
     }
 
     public function assertCanModify(WishlistInterface $wishlist): void
