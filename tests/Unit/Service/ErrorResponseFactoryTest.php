@@ -64,4 +64,25 @@ final class ErrorResponseFactoryTest extends TestCase
 
         self::assertSame('application/json', $response->headers->get('Content-Type'));
     }
+
+    public function testNotFound(): void
+    {
+        $response = $this->factory->notFound('Wishlist 1 was not found.');
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
+        $payload = json_decode($response->getContent(), true);
+        self::assertSame('Not found', $payload['error']);
+        self::assertSame('Wishlist 1 was not found.', $payload['message']);
+        self::assertArrayNotHasKey('violations', $payload);
+    }
+
+    public function testForbidden(): void
+    {
+        $response = $this->factory->forbidden('You do not own this wishlist.');
+
+        self::assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+        $payload = json_decode($response->getContent(), true);
+        self::assertSame('Forbidden', $payload['error']);
+        self::assertSame('You do not own this wishlist.', $payload['message']);
+    }
 }
