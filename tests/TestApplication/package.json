@@ -1,0 +1,8 @@
+{
+    "dependencies": {
+        "@bitexpert/wishlist-concierge-plugin": "file:../../../assets/shop"
+    },
+    "devDependencies": {},
+    "removeDependencies": [],
+    "removeDevDependencies": []
+}

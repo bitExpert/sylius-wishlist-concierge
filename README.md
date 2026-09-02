@@ -351,7 +351,7 @@ composer require bitexpert/sylius-wishlist-concierge-plugin
 5. Assets (`webpack.config.js:24` `plugin-shop-entry` → `assets/shop/entrypoint.js:1` → `assets/shop/webmcp/registry.js:148`):
    ```bash
    ddev exec bash -c "cd vendor/sylius/test-application && yarn build"
-   # → public/build/app/shop/plugin-shop-entry.*.js (now 87.5 KiB)
+   # → public/build/app/shop/plugin-shop-entry.*.js (12.8 KiB) + webmcp--toolbox/-toast controllers lazily in app-shop-entry
    ```
 6. Open `https://wishlist-concierge.ddev.site/en_US/` → footer badge `WebMCP: 12 tools ready` (via `templates/shop/webmcp/status.html.twig:1` hook `sylius_shop.base.footer.content`).
 
@@ -360,6 +360,51 @@ composer require bitexpert/sylius-wishlist-concierge-plugin
 (cd vendor/sylius/test-application && yarn install && yarn build) && vendor/bin/console assets:install
 symfony server:start -d  # https://localhost:8000
 ```
+
+## Using in a real Sylius application
+
+The Test-Application above works because `vendor/sylius/test-application/webpack.config.js` hardcodes the plugin into the build (`plugin-shop-entry` entry + merged `assets/shop/controllers.json`) and `templates/shop/javascripts.html.twig` enqueues it. **A real Sylius-Standard app (composer-installed plugin, Webpack Encore + `@symfony/stimulus-bridge`) does not have any of that.** Follow the same manual integration pattern as the official [CmsPlugin](https://docs.sylius.com/cms-plugin/installation/manual-installation):
+
+1. **Import the plugin's entrypoint** in the host app's `assets/shop/entrypoint.js`:
+   ```js
+   import '@vendor/bitexpert/sylius-wishlist-concierge-plugin/assets/shop/entrypoint';
+   ```
+   This bundles `assets/shop/webmcp/registry.js` into the host's own `app-shop-entry`, so `document.modelContext.registerTool()` runs for all 12 tools.
+
+2. **Make the npm package resolvable** from the host app (required for the stimulus-bridge to read the plugin's `package.json`):
+   ```bash
+   yarn add @bitexpert/wishlist-concierge-plugin@file:vendor/bitexpert/sylius-wishlist-concierge-plugin/assets/shop
+   ```
+
+3. **Register the Stimulus controllers** in the host app's `assets/shop/controllers.json`:
+   ```json
+   {
+     "controllers": {
+       "@bitexpert/wishlist-concierge-plugin": {
+         "webmcp--toolbox": { "enabled": true, "fetch": "lazy" },
+         "webmcp--toast":   { "enabled": true, "fetch": "lazy" }
+       }
+     }
+   }
+   ```
+   The bridge looks up `main` and the short controller identifier `webmcp--toolbox` (via the `name` field) from the plugin's `package.json` — no host-side `main`/`name` needed.
+
+4. **Rebuild assets**:
+   ```bash
+   yarn encore dev        # or encore production
+   bin/console assets:install
+   bin/console cache:clear
+   ```
+
+**Troubleshooting**
+
+| Symptom                                                        | Cause                       | Fix                                            |
+|----------------------------------------------------------------|-----------------------------|------------------------------------------------|
+| Build error `The file "@bitexpert/wishlist-concierge-plugin/package.json" could not be found` | Step 2 not done | Run `yarn add ...` then `yarn install --force` |
+| Toolbox/toast never connect (badge click is a no-op)           | Step 3 missing — controllers not merged | Add the `controllers` block to the host `assets/shop/controllers.json`; verify `var/cache/.../webpack/controllers.merged.shop.json` contains `webmcp--toolbox` |
+| No WebMCP tools registered (`document.modelContext` empty)     | Step 1 missing              | Import the plugin entrypoint in the host `assets/shop/entrypoint.js` |
+
+After a plugin upgrade, re-run step 2 (`yarn add --force`) so the `file:` dependency re-copies the updated assets.
 
 ## Testing
 

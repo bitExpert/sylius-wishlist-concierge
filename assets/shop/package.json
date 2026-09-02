@@ -1,8 +1,7 @@
 {
   "name": "@bitexpert/wishlist-concierge-plugin",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
+  "license": "MIT",
   "description": "Wishlist Concierge – WebMCP toolbox controllers",
   "symfony": {
     "controllers": {
@@ -21,9 +20,5 @@
         "enabled": true
       }
     }
-  },
-  "peerDependencies": {
-    "@hotwired/stimulus": "^3.0.0",
-    "@symfony/stimulus-bridge": "^3.2.0"
   }
 }
