@@ -219,6 +219,99 @@ final class ToolContractValidatorTest extends TestCase
         self::assertTrue($request->attributes->has(ToolContractValidator::DTO_ATTRIBUTE));
     }
 
+    public function testMoveToCartWithEmptyVariantCodes(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/move-to-cart',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_move_to_cart');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        self::assertNull($event->getResponse());
+        self::assertTrue($request->attributes->has(ToolContractValidator::DTO_ATTRIBUTE));
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+        self::assertNull($dto->variantCodes);
+    }
+
+    public function testMoveToCartWithVariantCodesAsArray(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/move-to-cart',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            json_encode(['variantCodes' => ['VARIANT_1', 'VARIANT_2']], JSON_THROW_ON_ERROR),
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_move_to_cart');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        self::assertNull($event->getResponse());
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+        self::assertSame(['VARIANT_1', 'VARIANT_2'], $dto->variantCodes);
+    }
+
+    public function testMoveToCartWithSingleVariantCode(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/move-to-cart',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            json_encode(['variantCodes' => ['VARIANT_1']], JSON_THROW_ON_ERROR),
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_move_to_cart');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        self::assertNull($event->getResponse());
+        $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
+        self::assertSame(['VARIANT_1'], $dto->variantCodes);
+    }
+
+    public function testMoveToCartWithInvalidVariantCode(): void
+    {
+        $request = Request::create(
+            '/en_US/_webmcp/wishlist_concierge/wishlist/5/move-to-cart',
+            'POST',
+            [],
+            [],
+            [],
+            [],
+            json_encode(['variantCodes' => ['INVALID CODE!']], JSON_THROW_ON_ERROR),
+        );
+        $request->headers->set('Content-Type', 'application/json');
+        $request->attributes->set('_route', 'bitexpert_concierge_wishlist_move_to_cart');
+
+        $event = $this->makeEvent($request);
+
+        $this->validator->onKernelRequest($event);
+
+        $response = $event->getResponse();
+        self::assertNotNull($response);
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+    }
+
     private function makeEvent(Request $request): RequestEvent
     {
         $kernel = $this->createMock(HttpKernelInterface::class);

@@ -151,6 +151,8 @@ final class ModelContextToolCollectorTest extends TestCase
 
         $moveToCart = $this->byName($tools, 'wishlist.move_to_cart');
         self::assertSame('integer', $moveToCart['inputSchema']['properties']['wishlistId']['type']);
+        self::assertSame('array', $moveToCart['inputSchema']['properties']['variantCodes']['type']);
+        self::assertArrayNotHasKey('variantCodes', $moveToCart['inputSchema']['required']);
 
         $getDetails = $this->byName($tools, 'product.get_details');
         self::assertSame('string', $getDetails['inputSchema']['properties']['productCode']['type']);

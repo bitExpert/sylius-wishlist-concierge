@@ -101,8 +101,8 @@
         <service id="BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferController"
                  public="true">
             <argument type="service" id="sylius_wishlist_plugin.repository.wishlist" />
-            <argument type="service" id="sylius.context.channel" />
-            <argument type="service" id="sylius.factory.order" />
+            <argument type="service" id="sylius.context.cart" />
+            <argument type="service" id="sylius.assigner.order_token.unique_id_based" />
             <argument type="service" id="sylius.factory.order_item" />
             <argument type="service" id="sylius.modifier.order_item_quantity" />
             <argument type="service" id="sylius.order_processing.order_processor" />

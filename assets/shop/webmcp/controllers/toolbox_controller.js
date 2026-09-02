@@ -147,7 +147,7 @@ export default class extends Controller {
             const step = schema.type === 'number' ? 'step="0.01"' : '';
             const placeholder = schema.default !== undefined ? `value="${schema.default}"` : '';
             input = `<input type="number" class="form-control form-control-sm" name="${key}" id="${toolName}-${key}" ${min} ${max} ${step} ${placeholder} ${requiredAttr}>`;
-        } else if (Array.isArray(schema.items)) {
+        } else if (schema.type === 'array') {
             input = `<input type="text" class="form-control form-control-sm" name="${key}" id="${toolName}-${key}" placeholder='["item1","item2"]' ${requiredAttr}>`;
         } else {
             const placeholder = schema.default !== undefined ? `value="${schema.default}"` : '';
@@ -173,30 +173,48 @@ export default class extends Controller {
 
         // Normalize inputSchema: if it's a string, parse it; fallback to empty object on error
         let schema = tool.inputSchema;
+        console.log('[WebMCP] Tool inputSchema type:', typeof schema);
         if (typeof schema === 'string') {
             try {
                 schema = JSON.parse(schema);
+                console.log('[WebMCP] Parsed inputSchema to:', schema);
             } catch (e) {
                 console.warn('[WebMCP] Invalid inputSchema for tool', tool.name, e);
                 schema = {};
             }
         }
         const properties = schema?.properties || {};
+        console.log('[WebMCP] Properties:', properties);
 
         const payload = {};
         for (const [key, value] of formData.entries()) {
             if (key === '_toolName') continue;
             const prop = properties[key];
-            if (!prop) continue;
+            if (!prop) {
+                console.log('[WebMCP] Skipping field', key, '- prop is falsy:', prop);
+                continue;
+            }
 
-            const schema = typeof prop === 'string' ? JSON.parse(prop) : prop;
+            const propSchema = typeof prop === 'string' ? JSON.parse(prop) : prop;
+            console.log('[WebMCP] Processing field', key, 'prop:', prop, 'propSchema:', propSchema, 'propSchema.type:', propSchema.type);
 
-            if (schema.type === 'integer') {
-                payload[key] = parseInt(value, 10);
-            } else if (schema.type === 'boolean') {
+            if (propSchema.type === 'integer') {
+                const defaultValue = propSchema.default ?? 1;
+                payload[key] = value !== '' ? parseInt(value, 10) : defaultValue;
+            } else if (propSchema.type === 'boolean') {
                 payload[key] = value === '1' || value === 'true';
-            } else if (schema.type === 'number') {
-                payload[key] = parseFloat(value);
+            } else if (propSchema.type === 'number') {
+                const defaultValue = propSchema.default ?? 0;
+                payload[key] = value !== '' ? parseFloat(value) : defaultValue;
+            } else if (propSchema.type === 'array') {
+                console.log('[WebMCP] Array field detected, value:', value);
+                try {
+                    payload[key] = JSON.parse(value);
+                    console.log('[WebMCP] Parsed array:', payload[key]);
+                } catch {
+                    payload[key] = value !== '' ? [value] : null;
+                    console.log('[WebMCP] Wrapped in array:', payload[key]);
+                }
             } else {
                 try {
                     payload[key] = JSON.parse(value);

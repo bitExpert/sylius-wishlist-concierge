@@ -71,6 +71,43 @@ function createGenericExecutor(toolDef) {
     return async (input, { signal } = {}) => {
         if (signal?.aborted) throw new Error('Aborted');
 
+        // Normalize input: if it's a string (from executeTool), parse it
+        if (typeof input === 'string') {
+            try { 
+                const parsed = JSON.parse(input);
+                console.log('[WebMCP] Executor parsed string input to:', parsed);
+                input = parsed;
+            } catch (e) {
+                console.warn('[WebMCP] Executor failed to parse input:', e);
+            }
+        }
+
+        console.log('[WebMCP] Executor input type:', typeof input, 'value:', input);
+
+        // 0. Normalize array fields based on inputSchema
+        const properties = toolDef.inputSchema?.properties || {};
+        const normalizedInput = {};
+        for (const [key, val] of Object.entries(input)) {
+            const fieldSchema = properties[key];
+            const schema = typeof fieldSchema === 'string' ? JSON.parse(fieldSchema) : fieldSchema;
+            if (schema?.type === 'array') {
+                if (typeof val === 'string') {
+                    try {
+                        normalizedInput[key] = JSON.parse(val);
+                    } catch {
+                        normalizedInput[key] = val !== '' ? [val] : null;
+                    }
+                } else if (Array.isArray(val)) {
+                    normalizedInput[key] = val;
+                } else {
+                    normalizedInput[key] = [val];
+                }
+            } else {
+                normalizedInput[key] = val;
+            }
+        }
+        input = normalizedInput;
+
         // 1. Optional static confirmation prompt
         if (toolDef.confirmMessage) {
             if (!window.confirm(toolDef.confirmMessage)) {

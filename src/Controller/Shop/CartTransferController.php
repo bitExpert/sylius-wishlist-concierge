@@ -16,12 +16,12 @@ use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
-use Sylius\Component\Channel\Context\ChannelContextInterface;
-use Sylius\Component\Core\Model\OrderInterface;
 use Sylius\Component\Core\Repository\OrderRepositoryInterface;
+use Sylius\Component\Order\Context\CartContextInterface;
 use Sylius\Component\Order\Modifier\OrderItemQuantityModifierInterface;
 use Sylius\Component\Order\Processor\OrderProcessorInterface;
 use Sylius\Component\Resource\Factory\FactoryInterface;
+use Sylius\Component\Core\TokenAssigner\OrderTokenAssignerInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,8 +33,8 @@ final class CartTransferController extends AbstractController
 {
     public function __construct(
         private readonly WishlistRepositoryInterface $wishlistRepository,
-        private readonly ChannelContextInterface $channelContext,
-        private readonly FactoryInterface $orderFactory,
+        private readonly CartContextInterface $cartContext,
+        private readonly OrderTokenAssignerInterface $orderTokenAssigner,
         private readonly FactoryInterface $orderItemFactory,
         private readonly OrderItemQuantityModifierInterface $quantityModifier,
         private readonly OrderProcessorInterface $orderProcessor,
@@ -69,14 +69,9 @@ final class CartTransferController extends AbstractController
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $variantCodes = $dto->variantCodes;
-        $channel = $wishlist->getChannel() ?? $this->channelContext->getChannel();
-
-        /** @var OrderInterface $cart */
-        $cart = $this->orderFactory->createNew();
-        $cart->setChannel($channel);
-        $cart->setCurrencyCode($channel->getBaseCurrency()?->getCode() ?? 'USD');
-        $cart->setLocaleCode($channel->getDefaultLocale()?->getCode() ?? 'en_US');
-        $cart->setTokenValue(bin2hex(random_bytes(16)));
+        $cart = $this->cartContext->getCart();
+        $channel = $cart->getChannel();
+        $this->orderTokenAssigner->assignTokenValueIfNotSet($cart);
 
         $itemsToAdd = [];
         foreach ($wishlist->getWishlistProducts() as $wp) {
@@ -105,7 +100,7 @@ final class CartTransferController extends AbstractController
         $this->orderProcessor->process($cart);
         $this->orderRepository->add($cart);
 
-        return $this->json([
+        $response = $this->json([
             'cartToken' => $cart->getTokenValue(),
             'channelCode' => $channel->getCode(),
             'items' => array_map(fn($i) => [
@@ -118,5 +113,7 @@ final class CartTransferController extends AbstractController
             'totalFormatted' => sprintf('$%.2f', $cart->getTotal() / 100),
             'cartUrl' => sprintf('/%s/cart', $channel->getDefaultLocale()?->getCode() ?? 'en_US'),
         ], Response::HTTP_CREATED);
+
+        return $response;
     }
 }
