@@ -208,7 +208,7 @@ async function registerAll() {
     }
 
     // Also listen for toolchange
-    if (document.modelContext) {
+    if (document.modelContext && typeof document.modelContext.addEventListener === 'function') {
         document.modelContext.addEventListener('toolchange', () => {
             console.log('[WebMCP] toolchange event');
         });

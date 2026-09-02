@@ -19,14 +19,16 @@ export default class extends Controller {
 
         this.showModal();
         await this.refreshTools();
-        document.modelContext.addEventListener('toolchange', this.handleToolChange.bind(this));
+        if (typeof document.modelContext.addEventListener === 'function') {
+            document.modelContext.addEventListener('toolchange', this.handleToolChange.bind(this));
+        }
     }
 
     close() {
         if (this.modalInstance) {
             this.modalInstance.hide();
         }
-        if (document.modelContext) {
+        if (document.modelContext && typeof document.modelContext.removeEventListener === 'function') {
             document.modelContext.removeEventListener('toolchange', this.handleToolChange.bind(this));
         }
     }
@@ -43,7 +45,7 @@ export default class extends Controller {
     }
 
     async refreshTools() {
-        if (this.loaderTarget) {
+        if (this.hasLoaderTarget) {
             this.loaderTarget.remove();
         }
 
