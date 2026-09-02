@@ -16,7 +16,6 @@ use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
-use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Model\OrderInterface;
 use Sylius\Component\Core\Repository\OrderRepositoryInterface;
@@ -40,6 +39,7 @@ final class CartTransferController extends AbstractController
         private readonly OrderItemQuantityModifierInterface $quantityModifier,
         private readonly OrderProcessorInterface $orderProcessor,
         private readonly WishlistAccessChecker $accessChecker,
+        private readonly OrderRepositoryInterface $orderRepository,
     ) {
     }
 
@@ -52,7 +52,7 @@ final class CartTransferController extends AbstractController
         pathParams: ['wishlistId' => 'id'],
         routeName: 'bitexpert_concierge_wishlist_move_to_cart',
     )]
-    public function moveToCart(Request $request, int $id, OrderRepositoryInterface $orderRepository): JsonResponse
+    public function moveToCart(Request $request, int $id): JsonResponse
     {
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
@@ -103,7 +103,7 @@ final class CartTransferController extends AbstractController
         }
 
         $this->orderProcessor->process($cart);
-        $orderRepository->add($cart);
+        $this->orderRepository->add($cart);
 
         return $this->json([
             'cartToken' => $cart->getTokenValue(),
