@@ -63,7 +63,13 @@ final class WishlistController extends AbstractController
 
         $existingToken = $this->cookieTokenResolver->resolve();
         $wishlist = $this->wishlistManager->createThemed($dto->name, $dto->theme, null);
-        if ($existingToken !== '' && null === $wishlist->getShopUser()) {
+
+        // The token resolver never returns an empty string — when no cookie exists
+        // it generates a fresh UUID. Detect a real cookie on the request directly,
+        // otherwise the "first anonymous wishlist" cookie would never be persisted.
+        $hasCookieToken = $request->cookies->has('wishlist_cookie_token');
+
+        if ($hasCookieToken && null === $wishlist->getShopUser()) {
             $wishlist->setToken($existingToken);
         }
 
@@ -77,7 +83,7 @@ final class WishlistController extends AbstractController
         // Only set the cookie if there wasn't an existing token (first anonymous wishlist).
         // Anonymous wishlists are accessed via the cookie token, mirroring the
         // Sylius WishlistPlugin flow (shared cookie name = interchangeable).
-        if (null === $wishlist->getShopUser() && $existingToken === '') {
+        if (null === $wishlist->getShopUser() && !$hasCookieToken) {
             $response->headers->setCookie(new Cookie(
                 'wishlist_cookie_token',
                 $wishlist->getToken(),
