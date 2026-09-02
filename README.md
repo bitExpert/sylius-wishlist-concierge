@@ -10,8 +10,8 @@
 
 **Agent + human co-curate themed, budget-aware wishlist management for Sylius.** Instead of clicking 30 filters, you tell your agent *“birthday for my nephew”* — it searches taxons, builds a wishlist, optimizes for budget with Sylius `ChannelPricing`, and moves the best fit to cart after your confirm.
 
- - Demo: `https://wishlist-concierge.ddev.site/en_US/`
- - Video: ⚠️TODO 
+ - Demo: `https://wishlist-concierge.demo.bitexpert.de/en_US/`
+ - Video: `https://youtu.be/TEZSOK3mSmQ`
 
 ## What People + Agents Can Do Together
 
