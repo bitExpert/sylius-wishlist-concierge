@@ -25,31 +25,29 @@ class WishlistManagerTest extends TestCase
 {
     private WishlistManager $manager;
 
-    /**
-     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&WishlistInterface $wishlistMock
-     */
+    /** @var \PHPUnit\Framework\MockObject\MockObject&WishlistInterface */
     private WishlistInterface $wishlistMock;
 
     private ChannelInterface $channelMock;
 
     protected function setUp(): void
     {
-        // Mocks for dependencies
-        $wishlistFactory = $this->createMock(WishlistFactoryInterface::class);
-        $wishlistRepository = $this->createMock(WishlistRepositoryInterface::class);
-        $wishlistProductFactory = $this->createMock(WishlistProductFactoryInterface::class);
-        $variantRepository = $this->createMock(ProductVariantRepositoryInterface::class);
-        $channelContext = $this->createMock(ChannelContextInterface::class);
-        $channelRepository = $this->createMock(ChannelRepositoryInterface::class);
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $entityManager = $this->createMock(EntityManagerInterface::class);
+        // Stubs for dependencies that only provide return values
+        $wishlistFactory = $this->createStub(WishlistFactoryInterface::class);
+        $wishlistRepository = $this->createStub(WishlistRepositoryInterface::class);
+        $wishlistProductFactory = $this->createStub(WishlistProductFactoryInterface::class);
+        $variantRepository = $this->createStub(ProductVariantRepositoryInterface::class);
+        $channelContext = $this->createStub(ChannelContextInterface::class);
+        $channelRepository = $this->createStub(ChannelRepositoryInterface::class);
+        $tokenStorage = $this->createStub(TokenStorageInterface::class);
+        $entityManager = $this->createStub(EntityManagerInterface::class);
 
         // Dummy channel used by the manager
-        $this->channelMock = $this->createMock(ChannelInterface::class);
+        $this->channelMock = $this->createStub(ChannelInterface::class);
         $this->channelMock->method('getCode')->willReturn('FASHION_WEB');
         $channelContext->method('getChannel')->willReturn($this->channelMock);
 
-        // Dummy wishlist returned by the factory
+        // Dummy wishlist returned by the factory (mock: expectations are set per test)
         $this->wishlistMock = $this->createMock(WishlistInterface::class);
         $wishlistFactory->method('createNew')->willReturn($this->wishlistMock);
         $wishlistFactory->method('createForUserAndChannel')->willReturn($this->wishlistMock);
@@ -72,13 +70,9 @@ class WishlistManagerTest extends TestCase
     #[Test]
     public function createsThemedWishlistAndSetsChannel(): void
     {
-        /** @phpstan-ignore-next-line */
         $name = 'My Wishlist';
         $theme = 'summer';
-        $expectedName = 'My Wishlist — summer';
-        /** @phpstan-ignore-next-line */
 
-        /** @phpstan-ignore-next-line */
         $this->wishlistMock->expects($this->once())
             ->method('setChannel')
             ->with($this->channelMock);
@@ -89,15 +83,10 @@ class WishlistManagerTest extends TestCase
 
     #[Test]
     public function keepsNameWhenThemeAlreadyContained(): void
-        /** @phpstan-ignore-next-line */
     {
         $name = 'Summer Gifts'; // already contains the theme word
         $theme = 'summer';
-        /** @phpstan-ignore-next-line */
-        $expectedName = $name; // unchanged
-        /** @phpstan-ignore-next-line */
 
-        /** @phpstan-ignore-next-line */
         $this->wishlistMock->expects($this->once())
             ->method('setChannel')
             ->with($this->channelMock);

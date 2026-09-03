@@ -24,24 +24,20 @@ class BudgetOptimizerTest extends TestCase
 
     private ChannelInterface $channelMock;
 
-    /**
-     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&ProductVariantPricesCalculatorInterface $calculatorMock
-     */
+    /** @var \PHPUnit\Framework\MockObject\Stub&ProductVariantPricesCalculatorInterface */
     private ProductVariantPricesCalculatorInterface $calculatorMock;
 
-    /**
-     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&EligiblePromotionsProvider $promotionsProviderMock
-     */
+    /** @var \PHPUnit\Framework\MockObject\Stub&EligiblePromotionsProvider */
     private EligiblePromotionsProvider $promotionsProviderMock;
 
     protected function setUp(): void
     {
-        $channelContext = $this->createMock(ChannelContextInterface::class);
-        $this->channelMock = $this->createMock(ChannelInterface::class);
+        $channelContext = $this->createStub(ChannelContextInterface::class);
+        $this->channelMock = $this->createStub(ChannelInterface::class);
         $channelContext->method('getChannel')->willReturn($this->channelMock);
 
-        $this->calculatorMock = $this->createMock(ProductVariantPricesCalculatorInterface::class);
-        $this->promotionsProviderMock = $this->createMock(EligiblePromotionsProvider::class);
+        $this->calculatorMock = $this->createStub(ProductVariantPricesCalculatorInterface::class);
+        $this->promotionsProviderMock = $this->createStub(EligiblePromotionsProvider::class);
 
         // Promotions provider returns empty list for simplicity
         $this->promotionsProviderMock->method('getActiveForChannel')->willReturn([]);
@@ -59,11 +55,11 @@ class BudgetOptimizerTest extends TestCase
      */
     private function mockWishlistProduct(string $variantCode, int $priceCents, int $originalCents, int $quantity = 1): WishlistProductInterface
     {
-        $variant = $this->createMock(ProductVariantInterface::class);
+        $variant = $this->createStub(ProductVariantInterface::class);
         $variant->method('getCode')->willReturn($variantCode);
 
         // Calculator expectations will be set in the test itself
-        $product = $this->createMock(WishlistProductInterface::class);
+        $product = $this->createStub(WishlistProductInterface::class);
         $product->method('getVariant')->willReturn($variant);
         $product->method('getQuantity')->willReturn($quantity);
 
@@ -73,7 +69,7 @@ class BudgetOptimizerTest extends TestCase
     #[Test]
     public function optimizeZeroBudgetReturnsNoItems(): void
     {
-        $wishlist = $this->createMock(WishlistInterface::class);
+        $wishlist = $this->createStub(WishlistInterface::class);
         $wishlist->method('getChannel')->willReturn(null);
         $wishlist->method('getWishlistProducts')->willReturn(new \Doctrine\Common\Collections\ArrayCollection());
 
@@ -87,18 +83,12 @@ class BudgetOptimizerTest extends TestCase
     #[Test]
     public function optimizeBudgetSmallerThanCheapestItem(): void
     {
-        $wishlist = $this->createMock(WishlistInterface::class);
+        $wishlist = $this->createStub(WishlistInterface::class);
         $wishlist->method('getChannel')->willReturn(null);
 
         $wp = $this->mockWishlistProduct('V1', 500, 600);
         // Configure calculator to return these prices
-        /**
-         * @phpstan-ignore-next-line
-         */
         $this->calculatorMock->method('calculateOriginal')->willReturn(600);
-        /**
-         * @phpstan-ignore-next-line
-         */
         $this->calculatorMock->method('calculate')->willReturn(500);
         $wishlist->method('getWishlistProducts')->willReturn(new \Doctrine\Common\Collections\ArrayCollection([$wp]));
 

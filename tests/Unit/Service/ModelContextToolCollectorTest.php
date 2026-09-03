@@ -62,7 +62,7 @@ final class ModelContextToolCollectorTest extends TestCase
             $collection->add($name, new Route($path, [], [], [], '', [], $methods));
         }
 
-        $router = $this->createMock(RouterInterface::class);
+        $router = $this->createStub(RouterInterface::class);
         $router->method('getRouteCollection')->willReturn($collection);
 
         return $router;

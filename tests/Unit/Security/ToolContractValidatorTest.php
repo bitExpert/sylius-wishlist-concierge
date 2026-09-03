@@ -328,7 +328,7 @@ final class ToolContractValidatorTest extends TestCase
 
     private function makeEvent(Request $request): RequestEvent
     {
-        $kernel = $this->createMock(HttpKernelInterface::class);
+        $kernel = $this->createStub(HttpKernelInterface::class);
 
         return new RequestEvent($kernel, $request, HttpKernelInterface::MAIN_REQUEST);
     }
@@ -359,7 +359,7 @@ final class ToolContractValidatorTest extends TestCase
             $collection->add($name, new Route($path, [], [], [], '', [], $methods));
         }
 
-        $router = $this->createMock(RouterInterface::class);
+        $router = $this->createStub(RouterInterface::class);
         $router->method('getRouteCollection')->willReturn($collection);
 
         return $router;

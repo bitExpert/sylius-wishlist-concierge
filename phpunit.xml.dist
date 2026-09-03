@@ -5,6 +5,12 @@
          colors="true"
          failOnWarning="true"
          failOnRisky="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnPhpunitDeprecations="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnAllIssues="true"
+         failOnPhpunitDeprecation="false"
          cacheDirectory=".phpunit.cache"
 >
     <testsuites>

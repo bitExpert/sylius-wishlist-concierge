@@ -42,13 +42,13 @@ final class EligiblePromotionsProviderTest extends TestCase
         $fashion = $this->createPromotion('SPRING', 'Spring Sale', ['FASHION_WEB']);
         $other = $this->createPromotion('SPORTS', 'Sports Sale', ['SPORTS_WEB']);
 
-        $handler = $this->createMock(EligibleCatalogPromotionsProviderInterface::class);
+        $handler = $this->createStub(EligibleCatalogPromotionsProviderInterface::class);
         $handler->method('provide')->willReturn([$fashion, $other]);
 
-        $channel = $this->createMock(ChannelInterface::class);
+        $channel = $this->createStub(ChannelInterface::class);
         $channel->method('getCode')->willReturn('FASHION_WEB');
 
-        $channelContext = $this->createMock(ChannelContextInterface::class);
+        $channelContext = $this->createStub(ChannelContextInterface::class);
         $channelContext->method('getChannel')->willReturn($channel);
 
         $provider = new EligiblePromotionsProvider($handler, $channelContext);
@@ -63,8 +63,8 @@ final class EligiblePromotionsProviderTest extends TestCase
     public function testSummarizeReturnsSlimPayload(): void
     {
         $fashion = $this->createPromotion('SUMMER', 'Summer Sale', ['FASHION_WEB']);
-        $handler = $this->createMock(EligibleCatalogPromotionsProviderInterface::class);
-        $channelContext = $this->createMock(ChannelContextInterface::class);
+        $handler = $this->createStub(EligibleCatalogPromotionsProviderInterface::class);
+        $channelContext = $this->createStub(ChannelContextInterface::class);
 
         $provider = new EligiblePromotionsProvider($handler, $channelContext);
 
