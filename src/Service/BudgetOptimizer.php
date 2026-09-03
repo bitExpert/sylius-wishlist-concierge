@@ -47,6 +47,7 @@ final readonly class BudgetOptimizer
             if (null === $variant) {
                 continue;
             }
+
             try {
                 $unitOriginal = $this->productVariantPricesCalculator->calculateOriginal($variant, ['channel' => $channel]);
             } catch (\InvalidArgumentException) {
@@ -72,7 +73,7 @@ final readonly class BudgetOptimizer
             ];
         }
 
-        usort($items, fn(array $a, array $b) => $a['price'] <=> $b['price']);
+        usort($items, fn (array $a, array $b) => $a['price'] <=> $b['price']);
 
         $chosen = [];
         $total = 0;

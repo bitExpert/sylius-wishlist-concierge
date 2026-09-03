@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\BitExpert\SyliusWishlistConciergePlugin\Unit\Service\Promotion;
 
 use BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Sylius\Bundle\PromotionBundle\Provider\EligibleCatalogPromotionsProviderInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
@@ -32,6 +33,7 @@ final class EligiblePromotionsProviderTest extends TestCase
         return $promotion;
     }
 
+    #[Test]
     public function testGetActiveForChannelFiltersByChannel(): void
     {
         $fashion = $this->createPromotion('SPRING', 'Spring Sale', ['FASHION_WEB']);
@@ -54,6 +56,7 @@ final class EligiblePromotionsProviderTest extends TestCase
         self::assertSame('SPRING', $result[0]->getCode());
     }
 
+    #[Test]
     public function testSummarizeReturnsSlimPayload(): void
     {
         $fashion = $this->createPromotion('SUMMER', 'Summer Sale', ['FASHION_WEB']);

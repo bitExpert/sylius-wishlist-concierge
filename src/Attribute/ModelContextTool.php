@@ -24,30 +24,52 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Attribute;
 final class ModelContextTool
 {
     public function __construct(
-        /** Unique tool identifier, e.g. "wishlist.create". */
+        /**
+         * Unique tool identifier, e.g. "wishlist.create".
+         */
         public readonly string $name,
-        /** Human-readable description shown to AI agents. */
+        /**
+         * Human-readable description shown to AI agents.
+         */
         public readonly string $description,
-        /** DTO class whose validation constraints drive the inputSchema. Mutually exclusive with manualInputSchema. */
+        /**
+         * DTO class whose validation constraints drive the inputSchema. Mutually exclusive with manualInputSchema.
+         */
         public readonly ?string $dtoClass = null,
-        /** Complete JSON-Schema input object. When non-empty it takes precedence over dtoClass. */
+        /**
+         * Complete JSON-Schema input object. When non-empty it takes precedence over dtoClass.
+         */
         public readonly array $manualInputSchema = [],
         public readonly bool $readOnlyHint = false,
         public readonly bool $destructiveHint = false,
         public readonly bool $idempotentHint = false,
-        /** Static confirmation prompt shown before execution. Empty string = no confirmation. */
+        /**
+         * Static confirmation prompt shown before execution. Empty string = no confirmation.
+         */
         public readonly string $confirmMessage = '',
-        /** DOM CustomEvent names dispatched after a successful execution. */
+        /**
+         * DOM CustomEvent names dispatched after a successful execution.
+         */
         public readonly array $emitsEvents = [],
-        /** When true the JS executor skips the locale prefix (for external APIs). */
+        /**
+         * When true the JS executor skips the locale prefix (for external APIs).
+         */
         public readonly bool $skipBaseUrl = false,
-        /** Maps an input key to the route path placeholder it fills, e.g. ['wishlistId' => 'id']. When empty, placeholders are matched by identical key name. */
+        /**
+         * Maps an input key to the route path placeholder it fills, e.g. ['wishlistId' => 'id']. When empty, placeholders are matched by identical key name.
+         */
         public readonly array $pathParams = [],
-        /** Static query-string parameters appended to every request (e.g. channelCode). */
+        /**
+         * Static query-string parameters appended to every request (e.g. channelCode).
+         */
         public readonly array $queryParams = [],
-        /** Extra HTTP headers sent with every request. */
+        /**
+         * Extra HTTP headers sent with every request.
+         */
         public readonly array $headers = [],
-        /** Name of a Symfony route that this tool should use. When provided, the collector will look up the route by name instead of reading a #[Route] attribute. */
+        /**
+         * Name of a Symfony route that this tool should use. When provided, the collector will look up the route by name instead of reading a #[Route] attribute.
+         */
         public readonly ?string $routeName = null,
     ) {
     }

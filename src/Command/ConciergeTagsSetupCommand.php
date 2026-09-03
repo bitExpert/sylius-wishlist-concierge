@@ -13,11 +13,11 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Sylius\Component\Core\Repository\ProductRepositoryInterface;
 use Sylius\Component\Product\Model\ProductAttribute;
 use Sylius\Component\Product\Model\ProductAttributeValue;
 use Sylius\Component\Product\Repository\ProductAttributeRepositoryInterface;
 use Sylius\Component\Product\Repository\ProductAttributeValueRepositoryInterface;
-use Sylius\Component\Core\Repository\ProductRepositoryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -107,7 +107,7 @@ final class ConciergeTagsSetupCommand extends Command
         }
         $tagsToCreate = array_keys($tagsToCreate);
 
-        $io->section("Ensuring attribute values: " . implode(', ', $tagsToCreate));
+        $io->section('Ensuring attribute values: ' . implode(', ', $tagsToCreate));
         foreach ($tagsToCreate as $tag) {
             $existing = $this->attributeValueRepository->findOneBy(['attribute' => $attribute, 'value' => $tag]);
             if (null !== $existing) {
@@ -128,9 +128,11 @@ final class ConciergeTagsSetupCommand extends Command
         // 3. Tag products
         $io->section("Tagging products in channel `{$channelCode}`");
 
-        $products = $this->productRepository->findBy([
+        $products = $this->productRepository->findBy(
+            [
             'enabled' => true,
-        ]);
+            ],
+        );
 
         $tagged = 0;
         foreach ($products as $product) {
@@ -144,11 +146,13 @@ final class ConciergeTagsSetupCommand extends Command
             foreach ($product->getChannels() as $channel) {
                 if ($channel->getCode() === $channelCode) {
                     $inChannel = true;
+
                     break;
                 }
             }
             if (!$inChannel) {
                 $io->writeln(sprintf('  - skipping %s (not in channel %s)', $code, $channelCode));
+
                 continue;
             }
 
@@ -157,7 +161,8 @@ final class ConciergeTagsSetupCommand extends Command
             $io->writeln(sprintf('  - %s (%s) => [%s]', $code, $name, implode(', ', $tags)));
 
             if ($dryRun) {
-                $tagged++;
+                ++$tagged;
+
                 continue;
             }
 
@@ -177,13 +182,14 @@ final class ConciergeTagsSetupCommand extends Command
                 $av = $this->attributeValueRepository->findOneBy(['attribute' => $attribute, 'value' => $tag]);
                 if (null === $av) {
                     $io->error("Attribute value `{$tag}` not found.");
+
                     continue;
                 }
                 $product->addAttribute($av);
             }
 
             $this->entityManager->persist($product);
-            $tagged++;
+            ++$tagged;
         }
 
         if (!$dryRun) {

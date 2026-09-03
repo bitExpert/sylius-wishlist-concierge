@@ -24,7 +24,10 @@ trait DtoFromRequest
 {
     public static function fromRequest(Request $request, SerializerInterface $serializer): static
     {
-        /** @var static */
-        return $serializer->deserialize($request->getContent() ?: '{}', static::class, 'json');
+        return $serializer->deserialize(
+            $request->getContent() ?: '{}',
+            static::class,
+            'json',
+        );
     }
 }

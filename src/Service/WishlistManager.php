@@ -12,6 +12,10 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
+use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistDeleteRequest;
+use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Channel\Context\ChannelNotFoundException;
 use Sylius\Component\Channel\Repository\ChannelRepositoryInterface;
@@ -22,10 +26,6 @@ use Sylius\WishlistPlugin\Factory\WishlistFactoryInterface;
 use Sylius\WishlistPlugin\Factory\WishlistProductFactoryInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistClearRequest;
-use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistDeleteRequest;
-use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class WishlistManager
 {
@@ -58,6 +58,7 @@ final readonly class WishlistManager
             if (null !== $existing) {
                 return $existing;
             }
+
             return $this->wishlistFactory->createForUserAndChannel($user, $channel);
         }
 
@@ -104,6 +105,7 @@ final readonly class WishlistManager
             foreach ($wishlist->getWishlistProducts() as $wp) {
                 if ($wp->getVariant()?->getCode() === $variantCode) {
                     $wp->setQuantity($wp->getQuantity() + $quantity);
+
                     return $wishlist;
                 }
             }
@@ -114,7 +116,9 @@ final readonly class WishlistManager
             throw new \InvalidArgumentException(sprintf('Variant "%s" has no product', $variantCode));
         }
 
-        /** @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct */
+        /**
+         * @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct
+         */
         $wishlistProduct = $this->wishlistProductFactory->createNew();
         $wishlistProduct->setProduct($product);
         $wishlistProduct->setVariant($variant);
@@ -130,6 +134,7 @@ final readonly class WishlistManager
         foreach ($wishlist->getWishlistProducts() as $wp) {
             if ($wp->getId() === $itemId) {
                 $wishlist->removeProduct($wp);
+
                 return $wishlist;
             }
         }
@@ -176,6 +181,7 @@ final readonly class WishlistManager
         if ($user instanceof ShopUserInterface) {
             return $user;
         }
+
         return null;
     }
 
@@ -185,13 +191,13 @@ final readonly class WishlistManager
     public function bulkAddItems(WishlistInterface $wishlist, array $items): array
     {
         $results = [];
-        
+
         foreach ($items as $item) {
             $variantCode = $item['variantCode'];
             $quantity = $item['quantity'] ?? 1;
-            
+
             $variant = $this->variantRepository->findOneBy(['code' => $variantCode]);
-            
+
             if (null === $variant) {
                 $results[] = [
                     'variantCode' => $variantCode,
@@ -199,9 +205,10 @@ final readonly class WishlistManager
                     'status' => 'skipped',
                     'reason' => sprintf('Variant "%s" not found', $variantCode),
                 ];
+
                 continue;
             }
-            
+
             if ($wishlist->hasProductVariant($variant)) {
                 foreach ($wishlist->getWishlistProducts() as $wp) {
                     if ($wp->getVariant()?->getCode() === $variantCode) {
@@ -212,11 +219,12 @@ final readonly class WishlistManager
                             'status' => 'skipped',
                             'reason' => sprintf('Variant "%s" already in wishlist, quantity updated', $variantCode),
                         ];
+
                         continue 2;
                     }
                 }
             }
-            
+
             $product = $variant->getProduct();
             if (null === $product) {
                 $results[] = [
@@ -225,24 +233,27 @@ final readonly class WishlistManager
                     'status' => 'skipped',
                     'reason' => sprintf('Variant "%s" has no product', $variantCode),
                 ];
+
                 continue;
             }
-            
-            /** @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct */
+
+            /**
+             * @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct
+             */
             $wishlistProduct = $this->wishlistProductFactory->createNew();
             $wishlistProduct->setProduct($product);
             $wishlistProduct->setVariant($variant);
             $wishlistProduct->setQuantity($quantity);
-            
+
             $wishlist->addWishlistProduct($wishlistProduct);
-            
+
             $results[] = [
                 'variantCode' => $variantCode,
                 'quantity' => $quantity,
                 'status' => 'added',
             ];
         }
-        
+
         return $results;
     }
 
@@ -255,7 +266,7 @@ final readonly class WishlistManager
                 'quantity' => $item->quantity,
             ];
         }
-        
+
         return $this->bulkAddItems($wishlist, $items);
     }
 
@@ -264,7 +275,7 @@ final readonly class WishlistManager
         foreach ($wishlist->getWishlistProducts() as $wp) {
             $wishlist->removeProduct($wp);
         }
-        
+
         return $wishlist;
     }
 

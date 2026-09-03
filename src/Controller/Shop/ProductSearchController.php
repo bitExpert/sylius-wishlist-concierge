@@ -66,12 +66,14 @@ final class ProductSearchController extends AbstractController
             return $this->json(['error' => $e->getMessage()], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        return $this->json([
+        return $this->json(
+            [
             'channelCode' => $this->themedProductFinder->getDefaultChannelCode(),
             'theme' => $dto->theme,
             'count' => count($results),
             'products' => $results,
-        ]);
+            ],
+        );
     }
 
     #[ModelContextTool(
@@ -90,10 +92,12 @@ final class ProductSearchController extends AbstractController
             return $this->json(['error' => 'Product not found'], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        return $this->json([
+        return $this->json(
+            [
             'channelCode' => $channelCode ?? $this->themedProductFinder->getDefaultChannelCode(),
             'count' => 1,
             'products' => [$product],
-        ]);
+            ],
+        );
     }
 }

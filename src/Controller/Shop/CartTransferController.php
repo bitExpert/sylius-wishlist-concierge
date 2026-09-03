@@ -17,11 +17,11 @@ use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
 use Sylius\Component\Core\Repository\OrderRepositoryInterface;
+use Sylius\Component\Core\TokenAssigner\OrderTokenAssignerInterface;
 use Sylius\Component\Order\Context\CartContextInterface;
 use Sylius\Component\Order\Modifier\OrderItemQuantityModifierInterface;
 use Sylius\Component\Order\Processor\OrderProcessorInterface;
 use Sylius\Component\Resource\Factory\FactoryInterface;
-use Sylius\Component\Core\TokenAssigner\OrderTokenAssignerInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -65,7 +65,9 @@ final class CartTransferController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var MoveToCartRequest $dto */
+        /**
+         * @var MoveToCartRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $variantCodes = $dto->variantCodes;
@@ -100,19 +102,25 @@ final class CartTransferController extends AbstractController
         $this->orderProcessor->process($cart);
         $this->orderRepository->add($cart);
 
-        $response = $this->json([
+        $response = $this->json(
+            [
             'cartToken' => $cart->getTokenValue(),
             'channelCode' => $channel->getCode(),
-            'items' => array_map(fn($i) => [
+            'items' => array_map(
+                fn ($i) => [
                 'variantCode' => $i->getVariant()?->getCode(),
                 'quantity' => $i->getQuantity(),
                 'unitPrice' => $i->getUnitPrice(),
                 'total' => $i->getTotal(),
-            ], $cart->getItems()->toArray()),
+                ],
+                $cart->getItems()->toArray(),
+            ),
             'total' => $cart->getTotal(),
             'totalFormatted' => sprintf('$%.2f', $cart->getTotal() / 100),
             'cartUrl' => sprintf('/%s/cart', $channel->getDefaultLocale()?->getCode() ?? 'en_US'),
-        ], Response::HTTP_CREATED);
+            ],
+            Response::HTTP_CREATED,
+        );
 
         return $response;
     }

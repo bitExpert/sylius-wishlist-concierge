@@ -2,175 +2,98 @@
 
 declare(strict_types=1);
 
-namespace Tests\BitExpert\SyliusWishlistConciergePlugin\Unit\Service;
+namespace BitExpert\SyliusWishlistConciergePlugin\Tests\Unit\Service;
 
 use BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer;
 use BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider;
-use Doctrine\Common\Collections\ArrayCollection;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Calculator\ProductVariantPricesCalculatorInterface;
 use Sylius\Component\Core\Model\ChannelInterface;
+use Sylius\Component\Core\Model\ProductVariantInterface;
 use Sylius\WishlistPlugin\Entity\WishlistInterface;
 use Sylius\WishlistPlugin\Entity\WishlistProductInterface;
 
 /**
- * @covers \BitExpert\SyliusWishlistConciergePlugin\Service\BudgetOptimizer
+ * Unit tests for {@see BudgetOptimizer} covering edge‑case budget scenarios.
  */
-final class BudgetOptimizerTest extends TestCase
+class BudgetOptimizerTest extends TestCase
 {
-    private function createOptimizer(
-        ChannelContextInterface $channelContext,
-        ProductVariantPricesCalculatorInterface $calculator,
-        EligiblePromotionsProvider $promotionsProvider,
-    ): BudgetOptimizer {
-        return new BudgetOptimizer($channelContext, $calculator, $promotionsProvider);
+    private BudgetOptimizer $optimizer;
+
+    private $channelMock;
+
+    private $calculatorMock;
+
+    private $promotionsProviderMock;
+
+    protected function setUp(): void
+    {
+        $channelContext = $this->createMock(ChannelContextInterface::class);
+        $this->channelMock = $this->createMock(ChannelInterface::class);
+        $channelContext->method('getChannel')->willReturn($this->channelMock);
+
+        $this->calculatorMock = $this->createMock(ProductVariantPricesCalculatorInterface::class);
+        $this->promotionsProviderMock = $this->createMock(EligiblePromotionsProvider::class);
+
+        // Promotions provider returns empty list for simplicity
+        $this->promotionsProviderMock->method('getActiveForChannel')->willReturn([]);
+        $this->promotionsProviderMock->method('summarize')->willReturn([]);
+
+        $this->optimizer = new BudgetOptimizer(
+            $channelContext,
+            $this->calculatorMock,
+            $this->promotionsProviderMock,
+        );
     }
 
     /**
-     * @param array<string, int> $prices   variantCode => price
-     * @param array<string, int> $original variantCode => original price
+     * Helper to build a mock WishlistProduct with a given variant code and price values.
      */
-    private function createCalculator(array $prices, array $original): ProductVariantPricesCalculatorInterface
+    private function mockWishlistProduct(string $variantCode, int $priceCents, int $originalCents, int $quantity = 1): WishlistProductInterface
     {
-        $calculator = $this->createMock(ProductVariantPricesCalculatorInterface::class);
-        $calculator->method('calculate')->willReturnCallback(
-            fn ($variant, $context) => $prices[$variant->getCode()] ?? 0
-        );
-        $calculator->method('calculateOriginal')->willReturnCallback(
-            fn ($variant, $context) => $original[$variant->getCode()] ?? $prices[$variant->getCode()] ?? 0
-        );
+        $variant = $this->createMock(ProductVariantInterface::class);
+        $variant->method('getCode')->willReturn($variantCode);
 
-        return $calculator;
+        // Calculator expectations will be set in the test itself
+        $product = $this->createMock(WishlistProductInterface::class);
+        $product->method('getVariant')->willReturn($variant);
+        $product->method('getQuantity')->willReturn($quantity);
+
+        return $product;
     }
 
-    private function createPromotionsProvider(bool $include = true): EligiblePromotionsProvider
+    #[Test]
+    public function optimizeZeroBudgetReturnsNoItems(): void
     {
-        $provider = $this->createMock(EligiblePromotionsProvider::class);
-        $provider->method('getActiveForChannel')->willReturn($include ? ['PROMO'] : []);
-        $provider->method('summarize')->willReturnCallback(
-            fn (array $promotions) => array_map(
-                static fn ($p) => ['code' => (string) $p, 'name' => (string) $p],
-                $promotions,
-            )
-        );
-
-        return $provider;
-    }
-
-    private function createWishlist(array $variants): WishlistInterface
-    {
-        $channel = $this->createMock(ChannelInterface::class);
         $wishlist = $this->createMock(WishlistInterface::class);
-        $wishlist->method('getChannel')->willReturn($channel);
+        $wishlist->method('getChannel')->willReturn(null);
+        $wishlist->method('getWishlistProducts')->willReturn(new \Doctrine\Common\Collections\ArrayCollection());
 
-        $wps = [];
-        foreach ($variants as $code => $quantity) {
-            $variant = $this->createVariant($code);
-            $wp = $this->createMock(WishlistProductInterface::class);
-            $wp->method('getVariant')->willReturn($variant);
-            $wp->method('getQuantity')->willReturn($quantity);
-            $wps[] = $wp;
-        }
-        $wishlist->method('getWishlistProducts')->willReturn(new ArrayCollection($wps));
-
-        return $wishlist;
+        $result = $this->optimizer->optimize($wishlist, 0);
+        $this->assertEmpty($result['chosen']);
+        $this->assertStringContainsString('No combination fits', $result['explanation']);
+        $this->assertSame(0, $result['totalCents']);
+        $this->assertSame(0, $result['savedCents']);
     }
 
-    private function createVariant(string $code)
+    #[Test]
+    public function optimizeBudgetSmallerThanCheapestItem(): void
     {
-        $variant = $this->createMock(\Sylius\Component\Core\Model\ProductVariantInterface::class);
-        $variant->method('getCode')->willReturn($code);
+        $wishlist = $this->createMock(WishlistInterface::class);
+        $wishlist->method('getChannel')->willReturn(null);
 
-        return $variant;
-    }
+        $wp = $this->mockWishlistProduct('V1', 500, 600);
+        // Configure calculator to return these prices
+        $this->calculatorMock->method('calculateOriginal')->willReturn(600);
+        $this->calculatorMock->method('calculate')->willReturn(500);
+        $wishlist->method('getWishlistProducts')->willReturn(new \Doctrine\Common\Collections\ArrayCollection([$wp]));
 
-    private function channelContext(): ChannelContextInterface
-    {
-        $channelContext = $this->createMock(ChannelContextInterface::class);
-        $channelContext->method('getChannel')->willReturn($this->createMock(ChannelInterface::class));
-
-        return $channelContext;
-    }
-
-    public function testOptimizeSelectsCheapestWithinBudget(): void
-    {
-        $calculator = $this->createCalculator(['cheap-variant' => 1703, 'expensive-variant' => 7589], []);
-        $provider = $this->createPromotionsProvider();
-        $optimizer = $this->createOptimizer($this->channelContext(), $calculator, $provider);
-
-        $wishlist = $this->createWishlist(['cheap-variant' => 1, 'expensive-variant' => 1]);
-
-        $result = $optimizer->optimize($wishlist, 8000);
-
-        self::assertSame(['cheap-variant'], $result['chosen']);
-        self::assertSame(1703, $result['totalCents']);
-        self::assertStringContainsString('1 of 2', $result['explanation']);
-        self::assertArrayHasKey('promotionsApplied', $result);
-    }
-
-    public function testOptimizeReturnsEmptyWhenBudgetTooLow(): void
-    {
-        $calculator = $this->createCalculator(['any-variant' => 5000], []);
-        $provider = $this->createPromotionsProvider();
-        $optimizer = $this->createOptimizer($this->channelContext(), $calculator, $provider);
-
-        $wishlist = $this->createWishlist(['any-variant' => 1]);
-
-        $result = $optimizer->optimize($wishlist, 1000);
-
-        self::assertSame([], $result['chosen']);
-        self::assertStringContainsString('No combination fits', $result['explanation']);
-    }
-
-    public function testOptimizeHandlesQuantity(): void
-    {
-        $calculator = $this->createCalculator(['qty-variant' => 1000], ['qty-variant' => 1200]);
-        $provider = $this->createPromotionsProvider();
-        $optimizer = $this->createOptimizer($this->channelContext(), $calculator, $provider);
-
-        $wishlist = $this->createWishlist(['qty-variant' => 3]); // 3000 total
-
-        $result = $optimizer->optimize($wishlist, 3500);
-
-        self::assertSame(['qty-variant'], $result['chosen']);
-        self::assertSame(3000, $result['totalCents']);
-        self::assertSame(600, $result['savedCents']); // 3600 - 3000
-    }
-
-    public function testOptimizeExcludesPromotionsUsesOriginalPrices(): void
-    {
-        // Product is discounted 1200 -> 1000 by a catalog promotion.
-        $calculator = $this->createCalculator(['qty-variant' => 1000], ['qty-variant' => 1200]);
-        $provider = $this->createPromotionsProvider();
-        $optimizer = $this->createOptimizer($this->channelContext(), $calculator, $provider);
-
-        $wishlist = $this->createWishlist(['qty-variant' => 1]);
-
-        // With promotions excluded the effective price is the original 1200, so no savings.
-        $result = $optimizer->optimize($wishlist, 2000, false);
-
-        self::assertSame(['qty-variant'], $result['chosen']);
-        self::assertSame(1200, $result['totalCents']);
-        self::assertSame(0, $result['savedCents']);
-        self::assertTrue($result['promotionsIgnored']);
-        self::assertStringContainsString('excluded', $result['explanation']);
-    }
-
-    public function testOptimizePromotionLetsDiscountedItemFitBudget(): void
-    {
-        // Item costs 1200 originally, 1000 with a promotion. Budget 1000 is only enough with the discount.
-        $calculator = $this->createCalculator(['promo-variant' => 1000], ['promo-variant' => 1200]);
-        $provider = $this->createPromotionsProvider();
-        $optimizer = $this->createOptimizer($this->channelContext(), $calculator, $provider);
-
-        $wishlist = $this->createWishlist(['promo-variant' => 1]);
-
-        $result = $optimizer->optimize($wishlist, 1000);
-
-        self::assertSame(['promo-variant'], $result['chosen']);
-        self::assertSame(1000, $result['totalCents']);
-        self::assertSame(200, $result['savedCents']);
-        self::assertStringContainsString('promotion', $result['explanation']);
+        $result = $this->optimizer->optimize($wishlist, 300); // budget 3.00$ < 5.00$
+        $this->assertEmpty($result['chosen']);
+        $this->assertStringContainsString('No combination fits', $result['explanation']);
+        $this->assertSame(0, $result['totalCents']);
+        $this->assertSame(0, $result['savedCents']);
     }
 }

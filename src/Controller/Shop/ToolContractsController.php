@@ -34,12 +34,13 @@ final class ToolContractsController extends AbstractController
      * We serialize with json_encode directly so that empty "properties" become an
      * object "{}" rather than an array "[]" (which the Symfony Serializer would do).
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed> $data
+     *
      * @throws \JsonException
      */
     private function manifestResponse(array $data): JsonResponse
     {
-        $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $json = json_encode($data, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
 
         return new JsonResponse($json, Response::HTTP_OK, [], true);
     }

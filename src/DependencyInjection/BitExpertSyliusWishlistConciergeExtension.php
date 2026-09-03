@@ -23,7 +23,9 @@ final class BitExpertSyliusWishlistConciergeExtension extends AbstractResourceEx
 {
     use PrependDoctrineMigrationsTrait;
 
-    /** @psalm-suppress UnusedVariable */
+    /**
+     * @psalm-suppress UnusedVariable
+     */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));

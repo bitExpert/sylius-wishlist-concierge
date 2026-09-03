@@ -50,13 +50,13 @@ final class ProductSearchRequest
     #[Assert\LessThanOrEqual(value: 10000000)]
     public ?int $priceMax = null;
 
-    /**
-     * @var string[]|null
-     */
-    #[Assert\All(constraints: [
+    /** @var string[]|null */
+    #[Assert\All(
+        constraints: [
         new Assert\NotBlank(),
         new Assert\Regex(pattern: '/^[a-z0-9_]+$/'),
-    ])]
+        ],
+    )]
     public ?array $taxonCodes = null;
 
     #[Assert\Positive]

@@ -13,37 +13,36 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
 use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
 use Symfony\Component\Validator\Mapping\PropertyMetadataInterface;
-use Psr\Log\LoggerInterface;
 
 /**
-      * Collects ModelContext tool definitions from controller methods by reading
-      * the #[ModelContextTool] and #[Route] attributes via PHP reflection.
-  *
-  * The resulting manifest is the single source of truth consumed by the
-  * JS frontend and the contract endpoints.
-  */
- final class ModelContextToolCollector
- {
-     /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
-     private ?array $cache = null;
+ * Collects ModelContext tool definitions from controller methods by reading
+ * the #[ModelContextTool] and #[Route] attributes via PHP reflection.
+ *
+ * The resulting manifest is the single source of truth consumed by the
+ * JS frontend and the contract endpoints.
+ */
+final class ModelContextToolCollector
+{
+    /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
+    private ?array $cache = null;
 
-     /**
-      * @param list<class-string>       $controllerClasses
-      * @param MetadataFactoryInterface $metadataFactory
-      */
-     public function __construct(
-         private readonly array $controllerClasses,
-         private readonly MetadataFactoryInterface $metadataFactory,
-         private readonly RouterInterface $router,
-         private readonly LoggerInterface $logger,
-     ) {
-     }
+    /**
+     * @param list<class-string>       $controllerClasses
+     */
+    public function __construct(
+        private readonly array $controllerClasses,
+        private readonly MetadataFactoryInterface $metadataFactory,
+        private readonly RouterInterface $router,
+        private readonly LoggerInterface $logger,
+    ) {
+    }
 
     /**
      * Build the full tool manifest.
@@ -150,7 +149,9 @@ use Psr\Log\LoggerInterface;
 
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
                 foreach ($method->getAttributes(ModelContextTool::class) as $attr) {
-                    /** @var ModelContextTool $tool */
+                    /**
+                     * @var ModelContextTool $tool
+                     */
                     $tool = $attr->newInstance();
                     $route = $this->resolveRoute($method, $classPrefix, $tool);
 
@@ -174,7 +175,9 @@ use Psr\Log\LoggerInterface;
             return '';
         }
 
-        /** @var Route $route */
+        /**
+         * @var Route $route
+         */
         $route = $attrs[0]->newInstance();
 
         return $route->path ?? '';
@@ -192,7 +195,7 @@ use Psr\Log\LoggerInterface;
             if (null === $route) {
                 $this->logger->warning(
                     'Route "{name}" not found for WebMCP tool "{tool}"',
-                    ['name' => $tool->routeName, 'tool' => $tool->name]
+                    ['name' => $tool->routeName, 'tool' => $tool->name],
                 );
 
                 return null;
@@ -212,7 +215,9 @@ use Psr\Log\LoggerInterface;
             return null;
         }
 
-        /** @var Route $route */
+        /**
+         * @var Route $route
+         */
         $route = $attrs[0]->newInstance();
 
         $path = $classPrefix . ($route->path ?? '');
@@ -422,8 +427,8 @@ use Psr\Log\LoggerInterface;
             $constraint instanceof Constraints\NotBlank,
             $constraint instanceof Constraints\NotNull => null,
 
-            $constraint instanceof Constraints\Type
-                || $constraint instanceof Constraints\Regex => $this->applyTypeConstraint($schema, $constraint),
+            $constraint instanceof Constraints\Type ||
+                $constraint instanceof Constraints\Regex => $this->applyTypeConstraint($schema, $constraint),
 
             $constraint instanceof Constraints\Positive => $this->applyPositive($schema, false),
             $constraint instanceof Constraints\PositiveOrZero => $this->applyPositive($schema, true),

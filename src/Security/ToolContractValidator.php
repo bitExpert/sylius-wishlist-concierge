@@ -13,8 +13,8 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Security;
 
 use BitExpert\SyliusWishlistConciergePlugin\Service\ErrorResponseFactory;
-use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
+use BitExpert\SyliusWishlistConciergePlugin\Service\ValidationErrorFormatter;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -33,7 +33,9 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class ToolContractValidator
 {
-    /** Request attribute under which the validated DTO is exposed to controllers. */
+    /**
+     * Request attribute under which the validated DTO is exposed to controllers.
+     */
     public const DTO_ATTRIBUTE = '_webmcp_validated_dto';
 
     public function __construct(
@@ -59,27 +61,37 @@ final class ToolContractValidator
         }
 
         $routeName = (string) $request->attributes->get('_route');
-        /** @var class-string $dtoClass */
+        /**
+         * @var class-string $dtoClass
+         */
         $dtoClass = $this->collector->routeDtoMap()[$routeName];
 
         try {
             $dto = $dtoClass::fromRequest($request, $this->serializer);
         } catch (\Exception $e) {
-            $this->logger->info('WebMCP tool rejected: invalid JSON payload', [
+            $this->logger->info(
+                'WebMCP tool rejected: invalid JSON payload',
+                [
                 'route' => $routeName,
                 'exception' => $e->getMessage(),
-            ]);
+                ],
+            );
             $event->setResponse($this->errorResponseFactory->invalidJson());
+
             return;
         }
 
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            $this->logger->info('WebMCP tool rejected: contract violations', [
+            $this->logger->info(
+                'WebMCP tool rejected: contract violations',
+                [
                 'route' => $routeName,
                 'violations' => $this->errorFormatter->format($violations),
-            ]);
+                ],
+            );
             $event->setResponse($this->errorResponseFactory->validationFailed($violations, $this->errorFormatter));
+
             return;
         }
 

@@ -35,10 +35,12 @@ class EligiblePromotionsProvider
     {
         $eligible = $this->eligibleCatalogPromotionsProvider->provide();
 
-        return array_values(array_filter(
-            $eligible,
-            static fn (CatalogPromotionInterface $promotion): bool => self::appliesToChannel($promotion, $channel),
-        ));
+        return array_values(
+            array_filter(
+                $eligible,
+                static fn (CatalogPromotionInterface $promotion): bool => self::appliesToChannel($promotion, $channel),
+            ),
+        );
     }
 
     /**

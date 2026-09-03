@@ -32,9 +32,6 @@ final class ErrorResponseFactory
         );
     }
 
-    /**
-     * @param ConstraintViolationListInterface $violations
-     */
     public function validationFailed(ConstraintViolationListInterface $violations, ValidationErrorFormatter $formatter): JsonResponse
     {
         return $this->error(

@@ -38,6 +38,7 @@ final readonly class WishlistAccessChecker
             if ($wishlist->getShopUser()->getId() !== $user->getId()) {
                 throw new AccessDeniedHttpException('You do not own this wishlist.');
             }
+
             return;
         }
 

@@ -8,13 +8,14 @@ use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\CartTransferControll
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\ProductSearchController;
 use BitExpert\SyliusWishlistConciergePlugin\Controller\Shop\WishlistController;
 use BitExpert\SyliusWishlistConciergePlugin\Service\ModelContextToolCollector;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\Validator\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Validator\Mapping\Factory\LazyLoadingMetadataFactory;
+use Symfony\Component\Validator\Mapping\Loader\AttributeLoader;
 
 final class ModelContextToolCollectorTest extends TestCase
 {
@@ -67,6 +68,7 @@ final class ModelContextToolCollectorTest extends TestCase
         return $router;
     }
 
+    #[Test]
     public function testCollectsAllTwelveTools(): void
     {
         $tools = $this->collector->collect();
@@ -88,6 +90,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertContains('product.get_details', $names);
     }
 
+    #[Test]
     public function testManifestCarriesRouteAndAnnotations(): void
     {
         $tools = $this->collector->collect();
@@ -100,6 +103,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertSame(['name', 'theme'], $create['inputSchema']['required']);
     }
 
+    #[Test]
     public function testReadOnlyHintExposed(): void
     {
         $tools = $this->collector->collect();
@@ -108,6 +112,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertTrue($list['annotations']['readOnlyHint']);
     }
 
+    #[Test]
     public function testEmptyPropertiesSerializesAsObject(): void
     {
         $tools = $this->collector->collect();
@@ -118,6 +123,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertInstanceOf(\stdClass::class, $list['inputSchema']['properties']);
     }
 
+    #[Test]
     public function testPathParamsExposed(): void
     {
         $tools = $this->collector->collect();
@@ -127,6 +133,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertSame('/_webmcp/wishlist_concierge/wishlist/{id}', $get['route']['path']);
     }
 
+    #[Test]
     public function testPathParamKeysMergedIntoSchema(): void
     {
         $tools = $this->collector->collect();
@@ -159,6 +166,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertContains('productCode', $getDetails['inputSchema']['required']);
     }
 
+    #[Test]
     public function testListKeepsEmptyProperties(): void
     {
         $tools = $this->collector->collect();
@@ -168,6 +176,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertArrayNotHasKey('required', $delete['inputSchema']);
     }
 
+    #[Test]
     public function testConfirmMessageExposed(): void
     {
         $tools = $this->collector->collect();
@@ -177,6 +186,7 @@ final class ModelContextToolCollectorTest extends TestCase
         self::assertTrue($delete['annotations']['destructiveHint']);
     }
 
+    #[Test]
     public function testRouteDtoMap(): void
     {
         $map = $this->collector->routeDtoMap();

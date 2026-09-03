@@ -58,7 +58,9 @@ final class WishlistController extends AbstractController
     )]
     public function create(Request $request): JsonResponse
     {
-        /** @var WishlistCreateRequest $dto */
+        /**
+         * @var WishlistCreateRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $existingToken = $this->cookieTokenResolver->resolve();
@@ -76,19 +78,24 @@ final class WishlistController extends AbstractController
         $this->entityManager->persist($wishlist);
         $this->entityManager->flush();
 
-        $response = $this->json([
+        $response = $this->json(
+            [
             'wishlist' => $this->wishlistManager->toArray($wishlist),
-        ], Response::HTTP_CREATED);
+            ],
+            Response::HTTP_CREATED,
+        );
 
         // Only set the cookie if there wasn't an existing token (first anonymous wishlist).
         // Anonymous wishlists are accessed via the cookie token, mirroring the
         // Sylius WishlistPlugin flow (shared cookie name = interchangeable).
         if (null === $wishlist->getShopUser() && !$hasCookieToken) {
-            $response->headers->setCookie(new Cookie(
-                'wishlist_cookie_token',
-                $wishlist->getToken(),
-                strtotime('+1 year'),
-            ));
+            $response->headers->setCookie(
+                new Cookie(
+                    'wishlist_cookie_token',
+                    $wishlist->getToken(),
+                    strtotime('+1 year'),
+                ),
+            );
         }
 
         return $response;
@@ -114,9 +121,11 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        return $this->json([
+        return $this->json(
+            [
             'wishlist' => $this->wishlistManager->toArray($wishlist),
-        ]);
+            ],
+        );
     }
 
     #[ModelContextTool(
@@ -138,7 +147,7 @@ final class WishlistController extends AbstractController
             $wishlists = $this->wishlistRepository->findAllByAnonymousAndChannel($cookieToken, $channel);
         }
 
-        $arr = array_map(fn($w) => $this->wishlistManager->toArray($w), $wishlists);
+        $arr = array_map(fn ($w) => $this->wishlistManager->toArray($w), $wishlists);
 
         return $this->json(['wishlists' => $arr, 'channelCode' => $channel->getCode()]);
     }
@@ -166,7 +175,9 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var WishlistDeleteRequest $dto */
+        /**
+         * @var WishlistDeleteRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $this->wishlistManager->deleteWishlist($wishlist);
@@ -196,7 +207,9 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var WishlistAddItemRequest $dto */
+        /**
+         * @var WishlistAddItemRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         try {
@@ -231,19 +244,23 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var WishlistBulkAddRequest $dto */
+        /**
+         * @var WishlistBulkAddRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $results = $this->wishlistManager->bulkAddItemsFromRequest($wishlist, $dto);
         $this->entityManager->persist($wishlist);
         $this->entityManager->flush();
 
-        return $this->json([
+        return $this->json(
+            [
             'wishlistId' => $id,
             'results' => $results,
-            'totalAdded' => count(array_filter($results, fn($r) => $r['status'] === 'added')),
-            'totalSkipped' => count(array_filter($results, fn($r) => $r['status'] === 'skipped')),
-        ]);
+            'totalAdded' => count(array_filter($results, fn ($r) => $r['status'] === 'added')),
+            'totalSkipped' => count(array_filter($results, fn ($r) => $r['status'] === 'skipped')),
+            ],
+        );
     }
 
     #[ModelContextTool(
@@ -268,7 +285,9 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var WishlistClearRequest $dto */
+        /**
+         * @var WishlistClearRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $this->wishlistManager->clearAllItems($wishlist);
@@ -300,7 +319,9 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var WishlistRemoveItemRequest $dto */
+        /**
+         * @var WishlistRemoveItemRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         try {
@@ -335,19 +356,23 @@ final class WishlistController extends AbstractController
             return $this->json(['error' => $e->getMessage()], Response::HTTP_FORBIDDEN);
         }
 
-        /** @var BudgetOptimizeRequest $dto */
+        /**
+         * @var BudgetOptimizeRequest $dto
+         */
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $includePromotions = $dto->includePromotions;
         $result = $this->budgetOptimizer->optimize($wishlist, $dto->budgetCents, $includePromotions);
 
-        return $this->json([
+        return $this->json(
+            [
             'wishlistId' => $id,
             'budgetCents' => $dto->budgetCents,
             'budgetFormatted' => sprintf('$%.2f', $dto->budgetCents / 100),
             ...$result,
             'totalFormatted' => sprintf('$%.2f', $result['totalCents'] / 100),
             'savedFormatted' => sprintf('$%.2f', $result['savedCents'] / 100),
-        ]);
+            ],
+        );
     }
 }

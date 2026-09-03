@@ -2,27 +2,19 @@
 
 declare(strict_types=1);
 
-use PhpCsFixer\Fixer\Import\NoUnusedImportsFixer;
+use PhpCsFixer\Fixer\ClassNotation\VisibilityRequiredFixer;
 use Symplify\EasyCodingStandard\Config\ECSConfig;
 
-return ECSConfig::configure()
-    ->withPaths([
+return static function (ECSConfig $ecsConfig): void {
+    $ecsConfig->paths([
         __DIR__ . '/src',
-        __DIR__ . '/tests',
-    ])
+        __DIR__ . '/tests/Unit',
+        __DIR__ . '/ecs.php',
+    ]);
 
-    // add a single rule
-    ->withRules([
-        NoUnusedImportsFixer::class,
-    ])
+    $ecsConfig->import('vendor/sylius-labs/coding-standard/ecs.php');
 
-    // add sets - group of rules, from easiest to more complex ones
-    // uncomment one, apply one, commit, PR, merge and repeat
-    //->withPreparedSets(
-    //      spaces: true,
-    //      namespaces: true,
-    //      docblocks: true,
-    //      arrays: true,
-    //      comments: true,
-    //)
-    ;
+    $ecsConfig->skip([
+        VisibilityRequiredFixer::class => ['*Spec.php'],
+    ]);
+};

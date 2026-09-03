@@ -8,6 +8,7 @@ use BitExpert\SyliusWishlistConciergePlugin\Dto\BudgetOptimizeRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\ProductSearchRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistAddItemRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\WishlistBulkAddRequest;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
@@ -32,6 +33,7 @@ final class DtoFromRequestTest extends TestCase
         $this->serializer = new Serializer([$objectNormalizer, new ArrayDenormalizer()], [new JsonEncoder()]);
     }
 
+    #[Test]
     public function testProductSearchFromRequestReadsQueryParams(): void
     {
         $request = Request::create('/_webmcp/wishlist_concierge/products/search', 'GET', [
@@ -51,6 +53,7 @@ final class DtoFromRequestTest extends TestCase
         self::assertSame(['shirts', 'shoes'], $dto->taxonCodes);
     }
 
+    #[Test]
     public function testProductSearchFromRequestDefaultsAndNonNullCasting(): void
     {
         $request = Request::create('/search', 'GET', ['theme' => 'gift']);
@@ -64,12 +67,13 @@ final class DtoFromRequestTest extends TestCase
         self::assertNull($dto->taxonCodes);
     }
 
+    #[Test]
     public function testAddItemFromRequestPopulatesFieldsAndLegacyAlias(): void
     {
         $request = Request::create('/add', 'POST', [], [], [], [], json_encode([
             'productVariantCode' => 'T_SHIRT_VARIANT',
             'quantity' => 3,
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
         $request->headers->set('Content-Type', 'application/json');
 
         $dto = WishlistAddItemRequest::fromRequest($request, $this->serializer);
@@ -78,6 +82,7 @@ final class DtoFromRequestTest extends TestCase
         self::assertSame(3, $dto->quantity);
     }
 
+    #[Test]
     public function testBulkAddFromRequestDenormalizesNestedItems(): void
     {
         $request = Request::create('/bulk', 'POST', [], [], [], [], json_encode([
@@ -85,7 +90,7 @@ final class DtoFromRequestTest extends TestCase
                 ['variantCode' => 'A', 'quantity' => 1],
                 ['variantCode' => 'B', 'quantity' => 2],
             ],
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
         $request->headers->set('Content-Type', 'application/json');
 
         $dto = WishlistBulkAddRequest::fromRequest($request, $this->serializer);
@@ -95,11 +100,12 @@ final class DtoFromRequestTest extends TestCase
         self::assertSame(2, $dto->items[1]['quantity']);
     }
 
+    #[Test]
     public function testBudgetOptimizeFromRequestAcceptsLegacyBudgetAlias(): void
     {
         $request = Request::create('/optimize', 'POST', [], [], [], [], json_encode([
             'budget' => 15000,
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
         $request->headers->set('Content-Type', 'application/json');
 
         $dto = BudgetOptimizeRequest::fromRequest($request, $this->serializer);

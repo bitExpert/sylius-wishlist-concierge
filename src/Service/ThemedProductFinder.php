@@ -22,6 +22,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final readonly class ThemedProductFinder
 {
     private const int DEFAULT_LIMIT = 12;
+
     private const string TAGS_ATTRIBUTE_CODE = 'concierge_tags';
 
     public function __construct(
@@ -73,7 +74,8 @@ final readonly class ThemedProductFinder
     }
 
     /**
-     * @param ProductInterface[] $products
+     * @param  ProductInterface[] $products
+     *
      * @return array<int, array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}>
      */
     private function filterAndMap(array $products, ChannelInterface $channel, string $localeCode, ?string $theme, ?int $priceMin, ?int $priceMax, int $limit): array
@@ -123,6 +125,7 @@ final readonly class ThemedProductFinder
                 break;
             }
         }
+
         return $results;
     }
 
@@ -194,6 +197,7 @@ final readonly class ThemedProductFinder
             if (null === $channel) {
                 throw new NotFoundHttpException(sprintf('Channel "%s" not found.', $code));
             }
+
             return $channel;
         }
 
@@ -224,7 +228,9 @@ final readonly class ThemedProductFinder
         return $this->mapProduct($product, $channel, $localeCode);
     }
 
-    /** @return string[] */
+    /**
+     * @return string[]
+     */
     private function getTaxonCodes(ProductInterface $product): array
     {
         $codes = [];
@@ -234,6 +240,7 @@ final readonly class ThemedProductFinder
                 $codes[] = $code;
             }
         }
+
         return $codes;
     }
 
@@ -243,6 +250,7 @@ final readonly class ThemedProductFinder
         if (false === $image) {
             return null;
         }
+
         return $image->getPath();
     }
 }
