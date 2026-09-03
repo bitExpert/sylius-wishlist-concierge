@@ -12,12 +12,13 @@ declare(strict_types=1);
 
 namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 
+use Doctrine\Common\Collections\Collection;
+use Sylius\Bundle\ProductBundle\Doctrine\ORM\ProductRepository;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Channel\Repository\ChannelRepositoryInterface;
 use Sylius\Component\Core\Model\ChannelInterface;
 use Sylius\Component\Core\Model\ProductInterface;
 use Sylius\Component\Core\Model\ProductVariantInterface;
-use Sylius\Bundle\ProductBundle\Doctrine\ORM\ProductRepository;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final readonly class ThemedProductFinder
@@ -60,6 +61,7 @@ final readonly class ThemedProductFinder
 
     /**
      * @param string[]|null $taxonCodes
+     *
      * @return array<int, ProductInterface>
      */
     private function findEnabledProductsForChannel(ChannelInterface $channel, ?array $taxonCodes): array
@@ -141,14 +143,18 @@ final readonly class ThemedProductFinder
     {
         $lowerTheme = strtolower($theme);
 
-        // Hard match: concierge_tags attribute (multi-select: one row per tag)
+        // Hard match: concierge_tags attribute (select: value is an array of tag keys,
+        // but keep the legacy comma-separated string form working too).
         foreach ($product->getAttributes() as $av) {
             if ($av->getAttribute()?->getCode() !== self::TAGS_ATTRIBUTE_CODE) {
                 continue;
             }
-            $tags = is_string($av->getValue())
-                ? explode(',', $av->getValue())
-                : [(string) $av->getValue()];
+            $value = $av->getValue();
+            $tags = is_array($value)
+                ? array_map(static fn ($t): string => (string) $t, $value)
+                : (is_string($value)
+                    ? explode(',', $value)
+                    : [(string) $value]);
             foreach ($tags as $tag) {
                 if ($lowerTheme === strtolower(trim($tag))) {
                     return true;
@@ -170,17 +176,19 @@ final readonly class ThemedProductFinder
      */
     private function mapProduct(ProductInterface $product, ChannelInterface $channel, string $localeCode): ?array
     {
-        $variant = $product->getEnabledVariants()->first();
+        /** @var Collection<int, ProductVariantInterface> $enabledVariants */
+        $enabledVariants = $product->getEnabledVariants();
+        /** @var Collection<int, ProductVariantInterface> $variants */
+        $variants = $product->getVariants();
+
+        $variant = $enabledVariants->first();
         if (false === $variant) {
-            $variant = $product->getVariants()->first();
+            $variant = $variants->first();
         }
         if (false === $variant) {
             return null;
         }
 
-        /**
-         * @var ProductVariantInterface $variant
-         */
         $channelPricing = $variant->getChannelPricingForChannel($channel);
         if (null === $channelPricing) {
             return null;
@@ -224,6 +232,7 @@ final readonly class ThemedProductFinder
     public function getDefaultChannelCode(): string
     {
         $channel = $this->channelContext->getChannel();
+
         /** @phpstan-ignore-next-line */
         return $channel ? (string) $channel->getCode() : '';
     }

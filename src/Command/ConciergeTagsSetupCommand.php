@@ -13,11 +13,12 @@ declare(strict_types=1);
 namespace BitExpert\SyliusWishlistConciergePlugin\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Sylius\Component\Core\Model\ProductInterface;
 use Sylius\Component\Core\Repository\ProductRepositoryInterface;
 use Sylius\Component\Product\Model\ProductAttribute;
+use Sylius\Component\Product\Model\ProductAttributeInterface;
 use Sylius\Component\Product\Model\ProductAttributeValue;
 use Sylius\Component\Product\Repository\ProductAttributeRepositoryInterface;
-use Sylius\Component\Product\Repository\ProductAttributeValueRepositoryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -55,12 +56,10 @@ final class ConciergeTagsSetupCommand extends Command
 
     /**
      * @phpstan-param ProductAttributeRepositoryInterface<\Sylius\Component\Product\Model\ProductAttributeInterface> $attributeRepository
-     * @phpstan-param ProductAttributeValueRepositoryInterface<\Sylius\Component\Product\Model\ProductAttributeValueInterface> $attributeValueRepository
      * @phpstan-param ProductRepositoryInterface<\Sylius\Component\Core\Model\ProductInterface> $productRepository
      */
     public function __construct(
         private ProductAttributeRepositoryInterface $attributeRepository,
-        private ProductAttributeValueRepositoryInterface $attributeValueRepository,
         private ProductRepositoryInterface $productRepository,
         private EntityManagerInterface $entityManager,
     ) {
@@ -84,13 +83,16 @@ final class ConciergeTagsSetupCommand extends Command
             $io->warning('Dry-run mode: no changes will be persisted.');
         }
 
-        // 1. Ensure attribute exists
+        $localeCode = $this->defaultLocaleCode();
+
+        // 1. Ensure the attribute exists (select attribute, JSON storage, multi-select).
         $attribute = $this->attributeRepository->findOneBy(['code' => self::ATTRIBUTE_CODE]);
         if (null === $attribute) {
             $io->section("Creating attribute `{$this->attributeCode()}` (type: selection, multiple: true)");
             $attribute = new ProductAttribute();
             $attribute->setCode(self::ATTRIBUTE_CODE);
             $attribute->setType('select');
+            $attribute->setStorageType('json');
             $attribute->setConfiguration(['multiple' => true]);
 
             if (!$dryRun) {
@@ -102,41 +104,38 @@ final class ConciergeTagsSetupCommand extends Command
             $io->writeln(sprintf('Attribute `%s` already exists (id: %d).', self::ATTRIBUTE_CODE, $attribute->getId()));
         }
 
-        // 2. Ensure attribute values exist
-        $tagsToCreate = [];
-        foreach (self::PRODUCT_TAGS as $tags) {
-            foreach ($tags as $tag) {
-                $tagsToCreate[$tag] = true;
-            }
-        }
-        $tagsToCreate = array_keys($tagsToCreate);
+        // 2. Ensure every tag is declared as a choice of the attribute (select choices
+        //    live in the attribute configuration, not as standalone attribute-value rows).
+        $io->section('Ensuring attribute choices: ' . implode(', ', $this->tags()));
+        $config = $attribute->getConfiguration();
+        $config['multiple'] = true;
+        $choices = $config['choices'] ?? [];
 
-        $io->section('Ensuring attribute values: ' . implode(', ', $tagsToCreate));
-        foreach ($tagsToCreate as $tag) {
-            $existing = $this->attributeValueRepository->findOneBy(['attribute' => $attribute, 'value' => $tag]);
-            if (null !== $existing) {
+        $changed = false;
+        foreach ($this->tags() as $tag) {
+            if (isset($choices[$tag])) {
                 continue;
             }
-            $io->writeln("  - creating: {$tag}");
-            $av = new ProductAttributeValue();
-            $av->setAttribute($attribute);
-            $av->setValue($tag);
+            $io->writeln("  - adding choice: {$tag}");
+            $choices[$tag] = [$localeCode => $tag];
+            $changed = true;
+        }
+        if ($changed) {
+            $config['choices'] = $choices;
+            $attribute->setConfiguration($config);
 
             if (!$dryRun) {
-                $this->entityManager->persist($av);
+                $this->entityManager->persist($attribute);
                 $this->entityManager->flush();
             }
         }
-        $io->writeln('  All values present.');
+        $io->writeln('  All choices present.');
 
-        // 3. Tag products
+        // 3. Tag products.
         $io->section("Tagging products in channel `{$channelCode}`");
 
-        $products = $this->productRepository->findBy(
-            [
-            'enabled' => true,
-            ],
-        );
+        /** @var array<int, ProductInterface> $products */
+        $products = $this->productRepository->findBy(['enabled' => true]);
 
         $tagged = 0;
         foreach ($products as $product) {
@@ -145,7 +144,7 @@ final class ConciergeTagsSetupCommand extends Command
                 continue;
             }
 
-            // Only tag products that are enabled in the target channel
+            // Only tag products that are enabled in the target channel.
             $inChannel = false;
             foreach ($product->getChannels() as $channel) {
                 if ($channel->getCode() === $channelCode) {
@@ -170,29 +169,7 @@ final class ConciergeTagsSetupCommand extends Command
                 continue;
             }
 
-            // Clear existing values for this attribute on this product (collect first —
-            // modifying the collection during iteration is unsafe)
-            $toRemove = [];
-            foreach ($product->getAttributes() as $av) {
-                if ($av->getAttribute()?->getCode() === self::ATTRIBUTE_CODE) {
-                    $toRemove[] = $av;
-                }
-            }
-            foreach ($toRemove as $av) {
-                $product->removeAttribute($av);
-            }
-
-            foreach ($tags as $tag) {
-                $av = $this->attributeValueRepository->findOneBy(['attribute' => $attribute, 'value' => $tag]);
-                if (null === $av) {
-                    $io->error("Attribute value `{$tag}` not found.");
-
-                    continue;
-                }
-                $product->addAttribute($av);
-            }
-
-            $this->entityManager->persist($product);
+            $this->setTags($product, $attribute, $tags, $localeCode);
             ++$tagged;
         }
 
@@ -203,6 +180,47 @@ final class ConciergeTagsSetupCommand extends Command
         $io->success("Tagged {$tagged} products. (Dry-run: {$dryRun})");
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Replace the product's `concierge_tags` value with the given tags.
+     *
+     * @param string[] $tags
+     */
+    private function setTags(
+        ProductInterface $product,
+        ProductAttributeInterface $attribute,
+        array $tags,
+        string $localeCode,
+    ): void {
+        foreach ($product->getAttributes() as $existing) {
+            if ($existing->getAttribute()?->getCode() === self::ATTRIBUTE_CODE) {
+                $product->removeAttribute($existing);
+                $this->entityManager->remove($existing);
+            }
+        }
+
+        $value = new ProductAttributeValue();
+        $value->setProduct($product);
+        $value->setAttribute($attribute);
+        $value->setLocaleCode($localeCode);
+        $value->setValue($tags);
+
+        $product->addAttribute($value);
+        $this->entityManager->persist($value);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function tags(): array
+    {
+        return array_values(array_unique(array_merge(...array_values(self::PRODUCT_TAGS))));
+    }
+
+    private function defaultLocaleCode(): string
+    {
+        return 'en_US';
     }
 
     private function attributeCode(): string

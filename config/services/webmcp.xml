@@ -51,7 +51,6 @@
 
         <service id="BitExpert\SyliusWishlistConciergePlugin\Command\ConciergeTagsSetupCommand">
             <argument type="service" id="sylius.repository.product_attribute" />
-            <argument type="service" id="sylius.repository.product_attribute_value" />
             <argument type="service" id="sylius.repository.product" />
             <argument type="service" id="doctrine.orm.entity_manager" />
             <tag name="console" />
