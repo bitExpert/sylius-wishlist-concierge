@@ -16,6 +16,7 @@
     },
     "require-dev": {
         "behat/behat": "^3.16",
+        "bitexpert/phpstan-sylius": "^0.3.0",
         "dbrekelmans/bdi": "^1.4",
         "friends-of-behat/mink": "^1.11",
         "friends-of-behat/mink-browserkit-driver": "^1.6",
@@ -26,25 +27,25 @@
         "friends-of-behat/symfony-extension": "^2.6",
         "friends-of-behat/variadic-extension": "^1.6",
         "nyholm/psr7": "^1.8",
-        "phpstan/phpstan": "^1.12",
-        "phpstan/phpstan-doctrine": "^1.3",
-        "phpstan/phpstan-webmozart-assert": "^1.2",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-webmozart-assert": "^2.0",
         "phpunit/phpunit": "^10.5",
         "sylius-labs/coding-standard": "^4.4",
         "sylius-labs/suite-tags-extension": "~0.2",
-        "sylius/sylius-rector": "^2.0",
+        "sylius/sylius-rector": "^3.7",
         "sylius/test-application": "^2.0.0@alpha",
         "symfony/browser-kit": "^6.4 || ^7.4",
         "symfony/debug-bundle": "^6.4 || ^7.4",
         "symfony/dotenv": "^6.4 || ^7.4",
         "symfony/http-client": "^6.4 || ^7.4",
         "symfony/intl": "^6.4 || ^7.4",
+        "symfony/property-info": "^6.4 || ~7.3.0",
         "symfony/runtime": "^6.4 || ^7.4",
+        "symfony/type-info": "~7.3.0",
         "symfony/var-exporter": "^7.4",
         "symfony/web-profiler-bundle": "^6.4 || ^7.4",
-        "symfony/webpack-encore-bundle": "^2.2",
-        "symfony/type-info": "~7.3.0",
-        "symfony/property-info": "^6.4 || ~7.3.0"
+        "symfony/webpack-encore-bundle": "^2.2"
     },
     "config": {
         "sort-packages": true,
@@ -52,6 +53,7 @@
             "dealerdirect/phpcodesniffer-composer-installer": false,
             "php-http/discovery": false,
             "phpstan/extension-installer": true,
+            "rector/extension-installer": true,
             "symfony/flex": true,
             "symfony/runtime": true
         }
