@@ -49,22 +49,28 @@ export default class extends Controller {
             this.loaderTarget.remove();
         }
 
-        const tools = await document.modelContext.getTools();
-        this.registeredTools.clear();
-        tools.forEach((tool) => {
-            this.registeredTools.set(tool.name, tool);
-        });
+        try {
+            const tools = await document.modelContext.getTools();
+            this.registeredTools.clear();
+            tools.forEach((tool) => {
+                this.registeredTools.set(tool.name, tool);
+            });
 
-        if (tools.length === 0) {
-            this.bodyTarget.innerHTML = '<div class="text-muted text-center py-3">No tools available.</div>';
+            if (tools.length === 0) {
+                this.bodyTarget.innerHTML = '<div class="text-muted text-center py-3">No tools available.</div>';
+                this.footerTarget.style.display = 'none';
+                return;
+            }
+
+            const html = tools.map((tool) => this.renderToolCard(tool)).join('');
+            this.bodyTarget.innerHTML = `<div class="row g-3">${html}</div>`;
+
+            this.footerTarget.style.display = '';
+        } catch (e) {
+            window.dispatchEvent(new CustomEvent('webmcp:toast', { detail: { type: 'error', message: 'Server error' } }));
+            this.bodyTarget.innerHTML = '<div class="text-muted text-center py-3">Failed to load tools.</div>';
             this.footerTarget.style.display = 'none';
-            return;
         }
-
-        const html = tools.map((tool) => this.renderToolCard(tool)).join('');
-        this.bodyTarget.innerHTML = `<div class="row g-3">${html}</div>`;
-
-        this.footerTarget.style.display = '';
     }
 
     showModal() {
@@ -254,7 +260,7 @@ export default class extends Controller {
             }
         } catch (e) {
             window.dispatchEvent(new CustomEvent('webmcp:toast', {
-                detail: { type: 'error', message: e.message || String(e) },
+                detail: { type: 'error', message: 'Server error' },
             }));
         } finally {
             if (spinner) spinner.style.display = 'none';
