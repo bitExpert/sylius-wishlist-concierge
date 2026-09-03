@@ -10,15 +10,18 @@ use PHPUnit\Framework\TestCase;
 use Sylius\Bundle\PromotionBundle\Provider\EligibleCatalogPromotionsProviderInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Model\CatalogPromotion;
+use Sylius\Component\Core\Model\CatalogPromotionInterface;
 use Sylius\Component\Core\Model\ChannelInterface;
-use Sylius\Component\Promotion\Model\CatalogPromotionInterface;
 
 /**
  * @covers \BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider
  */
 final class EligiblePromotionsProviderTest extends TestCase
 {
-    private function createPromotion(string $code, string $name, array $channelCodes): CatalogPromotionInterface
+    /**
+     * @param string[] $channelCodes
+     */
+    private function createPromotion(string $code, string $name, array $channelCodes = []): CatalogPromotionInterface
     {
         $promotion = new CatalogPromotion();
         $promotion->setCurrentLocale('en_US');

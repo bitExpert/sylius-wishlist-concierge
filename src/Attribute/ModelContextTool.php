@@ -38,6 +38,8 @@ final class ModelContextTool
         public readonly ?string $dtoClass = null,
         /**
          * Complete JSON-Schema input object. When non-empty it takes precedence over dtoClass.
+         *
+         * @var array<string, mixed>
          */
         public readonly array $manualInputSchema = [],
         public readonly bool $readOnlyHint = false,
@@ -49,6 +51,8 @@ final class ModelContextTool
         public readonly string $confirmMessage = '',
         /**
          * DOM CustomEvent names dispatched after a successful execution.
+         *
+         * @var string[]
          */
         public readonly array $emitsEvents = [],
         /**
@@ -57,14 +61,20 @@ final class ModelContextTool
         public readonly bool $skipBaseUrl = false,
         /**
          * Maps an input key to the route path placeholder it fills, e.g. ['wishlistId' => 'id']. When empty, placeholders are matched by identical key name.
+         *
+         * @var array<string, string>
          */
         public readonly array $pathParams = [],
         /**
          * Static query-string parameters appended to every request (e.g. channelCode).
+         *
+         * @var array<string, string>
          */
         public readonly array $queryParams = [],
         /**
          * Extra HTTP headers sent with every request.
+         *
+         * @var array<string, string>
          */
         public readonly array $headers = [],
         /**

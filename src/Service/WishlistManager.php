@@ -19,6 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Channel\Context\ChannelNotFoundException;
 use Sylius\Component\Channel\Repository\ChannelRepositoryInterface;
+use Sylius\Component\Core\Model\ChannelInterface;
 use Sylius\Component\Core\Model\ShopUserInterface;
 use Sylius\Component\Core\Repository\ProductVariantRepositoryInterface;
 use Sylius\WishlistPlugin\Entity\WishlistInterface;
@@ -29,6 +30,10 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final readonly class WishlistManager
 {
+    /**
+     * @phpstan-param ChannelRepositoryInterface<\Sylius\Component\Channel\Model\ChannelInterface> $channelRepository
+     * @phpstan-param ProductVariantRepositoryInterface<\Sylius\Component\Core\Model\ProductVariantInterface> $variantRepository
+     */
     public function __construct(
         private WishlistFactoryInterface $wishlistFactory,
         private WishlistRepositoryInterface $wishlistRepository,
@@ -44,8 +49,14 @@ final readonly class WishlistManager
     public function findOrCreate(?string $token = null): WishlistInterface
     {
         if (null !== $token) {
+            /**
+             * @var WishlistInterface|null $found
+             */
             $found = $this->wishlistRepository->findByToken($token);
             if (null !== $found) {
+                /**
+                 * @var WishlistInterface $found
+                 */
                 return $found;
             }
         }
@@ -54,15 +65,29 @@ final readonly class WishlistManager
         $channel = $this->channelContext->getChannel();
 
         if ($user instanceof ShopUserInterface) {
+            /**
+             * @var WishlistInterface|null $existing
+             */
             $existing = $this->wishlistRepository->findOneByShopUserAndChannel($user, $channel);
             if (null !== $existing) {
+                /**
+                 * @var WishlistInterface $existing
+                 */
                 return $existing;
             }
 
-            return $this->wishlistFactory->createForUserAndChannel($user, $channel);
+            /**
+             * @var WishlistInterface $wishlist
+             */
+            $wishlist = $this->wishlistFactory->createForUserAndChannel($user, $channel);
+            return $wishlist;
         }
 
-        return $this->wishlistFactory->createNew();
+        /**
+         * @var WishlistInterface $wishlist
+         */
+        $wishlist = $this->wishlistFactory->createNew();
+        return $wishlist;
     }
 
     public function createThemed(string $name, string $theme, ?string $channelCode = null): WishlistInterface
@@ -96,6 +121,9 @@ final readonly class WishlistManager
 
     public function addItem(WishlistInterface $wishlist, string $variantCode, int $quantity = 1): WishlistInterface
     {
+        /**
+         * @var \Sylius\Component\Core\Model\ProductVariantInterface|null $variant
+         */
         $variant = $this->variantRepository->findOneBy(['code' => $variantCode]);
         if (null === $variant) {
             throw new \InvalidArgumentException(sprintf('Variant "%s" not found', $variantCode));
@@ -115,6 +143,10 @@ final readonly class WishlistManager
         if (null === $product) {
             throw new \InvalidArgumentException(sprintf('Variant "%s" has no product', $variantCode));
         }
+
+        /**
+         * @var \Sylius\Component\Core\Model\ProductInterface $product
+         */
 
         /**
          * @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct
@@ -142,20 +174,30 @@ final readonly class WishlistManager
         throw new \InvalidArgumentException(sprintf('Item %d not found in wishlist.', $itemId));
     }
 
+    /**
+     * @return array{items: array<array{wishlistProductId: int, variantCode: ?string, productCode: ?string, productName: ?string, quantity: int, price: ?int, originalPrice: ?int}>, id: int, name: ?string, channelCode: ?string, itemsCount: int}
+     */
     public function toArray(WishlistInterface $wishlist, ?string $locale = null): array
     {
-        $resolvedLocale = $locale ?? $wishlist->getChannel()?->getDefaultLocale()?->getCode() ?? 'en_US';
+        /**
+         * @var ChannelInterface|null $wishlistChannel
+         */
+        $wishlistChannel = $wishlist->getChannel();
+        $resolvedLocale = $locale ?? $wishlistChannel?->getDefaultLocale()?->getCode() ?? 'en_US';
         $products = [];
         foreach ($wishlist->getWishlistProducts() as $wp) {
             $variant = $wp->getVariant();
             $product = $wp->getProduct();
-            $channel = $wishlist->getChannel() ?? $this->channelContext->getChannel();
+            /**
+             * @var ChannelInterface $channel
+             */
+            $channel = $wishlistChannel ?? $this->channelContext->getChannel();
             $pricing = $variant?->getChannelPricingForChannel($channel);
             $products[] = [
                 'wishlistProductId' => $wp->getId(),
                 'variantCode' => $variant?->getCode(),
-                'productCode' => $product?->getCode(),
-                'productName' => $product?->getTranslation($resolvedLocale)?->getName(),
+                'productCode' => $product->getCode(),
+                'productName' => $product->getTranslation($resolvedLocale)->getName(),
                 'quantity' => $wp->getQuantity(),
                 'price' => $pricing?->getPrice(),
                 'originalPrice' => $pricing?->getOriginalPrice(),
@@ -186,6 +228,8 @@ final readonly class WishlistManager
     }
 
     /**
+     * @param array<int, array{variantCode: string, quantity?: int}> $items
+     *
      * @return array<int, array{variantCode: string, quantity: int, status: 'added'|'skipped', reason?: string}>
      */
     public function bulkAddItems(WishlistInterface $wishlist, array $items): array
@@ -196,6 +240,9 @@ final readonly class WishlistManager
             $variantCode = $item['variantCode'];
             $quantity = $item['quantity'] ?? 1;
 
+            /**
+             * @var \Sylius\Component\Core\Model\ProductVariantInterface|null $variant
+             */
             $variant = $this->variantRepository->findOneBy(['code' => $variantCode]);
 
             if (null === $variant) {
@@ -238,6 +285,10 @@ final readonly class WishlistManager
             }
 
             /**
+             * @var \Sylius\Component\Core\Model\ProductInterface $product
+             */
+
+            /**
              * @var \Sylius\WishlistPlugin\Entity\WishlistProductInterface $wishlistProduct
              */
             $wishlistProduct = $this->wishlistProductFactory->createNew();
@@ -257,6 +308,9 @@ final readonly class WishlistManager
         return $results;
     }
 
+    /**
+     * @return array<int, array{variantCode: string, quantity: int, status: 'added'|'skipped', reason?: string}>
+     */
     public function bulkAddItemsFromRequest(WishlistInterface $wishlist, WishlistBulkAddRequest $request): array
     {
         $items = [];

@@ -28,7 +28,7 @@ final class ErrorResponseFactoryTest extends TestCase
         $response = $this->factory->invalidJson();
 
         self::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Invalid JSON payload', $payload['error']);
         self::assertArrayNotHasKey('violations', $payload);
     }
@@ -43,7 +43,7 @@ final class ErrorResponseFactoryTest extends TestCase
         $response = $this->factory->validationFailed($violations, new ValidationErrorFormatter());
 
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Validation failed', $payload['error']);
         self::assertIsArray($payload['violations']);
         self::assertNotEmpty($payload['violations']);
@@ -57,7 +57,7 @@ final class ErrorResponseFactoryTest extends TestCase
         $response = $this->factory->error('Not found', 'The resource does not exist.', Response::HTTP_NOT_FOUND);
 
         self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Not found', $payload['error']);
         self::assertSame('The resource does not exist.', $payload['message']);
     }
@@ -76,7 +76,7 @@ final class ErrorResponseFactoryTest extends TestCase
         $response = $this->factory->notFound('Wishlist 1 was not found.');
 
         self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Not found', $payload['error']);
         self::assertSame('Wishlist 1 was not found.', $payload['message']);
         self::assertArrayNotHasKey('violations', $payload);
@@ -88,7 +88,7 @@ final class ErrorResponseFactoryTest extends TestCase
         $response = $this->factory->forbidden('You do not own this wishlist.');
 
         self::assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Forbidden', $payload['error']);
         self::assertSame('You do not own this wishlist.', $payload['message']);
     }

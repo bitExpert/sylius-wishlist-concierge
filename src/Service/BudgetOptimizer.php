@@ -15,6 +15,7 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Service;
 use BitExpert\SyliusWishlistConciergePlugin\Service\Promotion\EligiblePromotionsProvider;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Calculator\ProductVariantPricesCalculatorInterface;
+use Sylius\Component\Core\Exception\MissingChannelConfigurationException;
 use Sylius\WishlistPlugin\Entity\WishlistInterface;
 
 final readonly class BudgetOptimizer
@@ -28,7 +29,7 @@ final readonly class BudgetOptimizer
 
     /**
      * @return array{
-     *     chosen:string[],
+     *     chosen:array<string|null>,
      *     totalCents:int,
      *     savedCents:int,
      *     explanation:string,
@@ -50,7 +51,7 @@ final readonly class BudgetOptimizer
 
             try {
                 $unitOriginal = $this->productVariantPricesCalculator->calculateOriginal($variant, ['channel' => $channel]);
-            } catch (\InvalidArgumentException) {
+            } catch (MissingChannelConfigurationException) {
                 continue;
             }
             $quantity = $wp->getQuantity();
@@ -58,7 +59,7 @@ final readonly class BudgetOptimizer
             if ($includePromotions) {
                 try {
                     $unitPrice = $this->productVariantPricesCalculator->calculate($variant, ['channel' => $channel]);
-                } catch (\InvalidArgumentException) {
+                } catch (MissingChannelConfigurationException) {
                     $unitPrice = $unitOriginal;
                 }
             } else {
@@ -75,13 +76,16 @@ final readonly class BudgetOptimizer
 
         usort($items, fn (array $a, array $b) => $a['price'] <=> $b['price']);
 
+        /**
+         * @var array<string> $chosen
+         */
         $chosen = [];
         $total = 0;
         $totalOriginal = 0;
 
         foreach ($items as $item) {
             if ($total + $item['price'] <= $budgetCents) {
-                $chosen[] = $item['variantCode'];
+                $chosen[] = (string) $item['variantCode'];
                 $total += $item['price'];
                 $totalOriginal += $item['original'];
             }
@@ -124,7 +128,7 @@ final readonly class BudgetOptimizer
     }
 
     /**
-     * @param string[] $chosen
+     * @param string[]|null[] $chosen
      */
     private function buildExplanation(array $chosen, int $total, int $totalOriginal, int $budget, int $totalItems, bool $includePromotions, int $activePromotions): string
     {

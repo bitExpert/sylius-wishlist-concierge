@@ -27,6 +27,7 @@ use BitExpert\SyliusWishlistConciergePlugin\Service\WishlistManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Model\ShopUserInterface;
+use Sylius\WishlistPlugin\Entity\WishlistInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Sylius\WishlistPlugin\Resolver\WishlistCookieTokenResolverInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -110,6 +111,9 @@ final class WishlistController extends AbstractController
     )]
     public function get(int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -164,6 +168,9 @@ final class WishlistController extends AbstractController
     )]
     public function delete(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -196,6 +203,9 @@ final class WishlistController extends AbstractController
     )]
     public function addItem(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -233,6 +243,9 @@ final class WishlistController extends AbstractController
     )]
     public function bulkAddItems(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -274,6 +287,9 @@ final class WishlistController extends AbstractController
     )]
     public function clearAllItems(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -308,6 +324,9 @@ final class WishlistController extends AbstractController
     )]
     public function postRemoveItem(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -345,6 +364,9 @@ final class WishlistController extends AbstractController
     )]
     public function optimize(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);

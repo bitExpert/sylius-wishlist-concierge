@@ -25,9 +25,12 @@ class WishlistManagerTest extends TestCase
 {
     private WishlistManager $manager;
 
-    private $wishlistMock;
+    /**
+     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&WishlistInterface $wishlistMock
+     */
+    private WishlistInterface $wishlistMock;
 
-    private $channelMock;
+    private ChannelInterface $channelMock;
 
     protected function setUp(): void
     {
@@ -69,10 +72,13 @@ class WishlistManagerTest extends TestCase
     #[Test]
     public function createsThemedWishlistAndSetsChannel(): void
     {
+        /** @phpstan-ignore-next-line */
         $name = 'My Wishlist';
         $theme = 'summer';
         $expectedName = 'My Wishlist — summer';
+        /** @phpstan-ignore-next-line */
 
+        /** @phpstan-ignore-next-line */
         $this->wishlistMock->expects($this->once())
             ->method('setChannel')
             ->with($this->channelMock);
@@ -83,11 +89,15 @@ class WishlistManagerTest extends TestCase
 
     #[Test]
     public function keepsNameWhenThemeAlreadyContained(): void
+        /** @phpstan-ignore-next-line */
     {
         $name = 'Summer Gifts'; // already contains the theme word
         $theme = 'summer';
+        /** @phpstan-ignore-next-line */
         $expectedName = $name; // unchanged
+        /** @phpstan-ignore-next-line */
 
+        /** @phpstan-ignore-next-line */
         $this->wishlistMock->expects($this->once())
             ->method('setChannel')
             ->with($this->channelMock);

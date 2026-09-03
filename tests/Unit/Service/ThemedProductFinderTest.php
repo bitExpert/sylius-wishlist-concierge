@@ -13,6 +13,6 @@ class ThemedProductFinderTest extends TestCase
 {
     public function testPlaceholder(): void
     {
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 }

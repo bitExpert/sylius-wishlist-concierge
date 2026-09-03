@@ -16,12 +16,16 @@ use BitExpert\SyliusWishlistConciergePlugin\Attribute\ModelContextTool;
 use BitExpert\SyliusWishlistConciergePlugin\Dto\MoveToCartRequest;
 use BitExpert\SyliusWishlistConciergePlugin\Security\ToolContractValidator;
 use BitExpert\SyliusWishlistConciergePlugin\Security\WishlistAccessChecker;
+use Sylius\Component\Core\Model\ChannelInterface;
+use Sylius\Component\Core\Model\OrderInterface;
+use Sylius\Component\Core\Model\OrderItemInterface;
 use Sylius\Component\Core\Repository\OrderRepositoryInterface;
 use Sylius\Component\Core\TokenAssigner\OrderTokenAssignerInterface;
 use Sylius\Component\Order\Context\CartContextInterface;
 use Sylius\Component\Order\Modifier\OrderItemQuantityModifierInterface;
 use Sylius\Component\Order\Processor\OrderProcessorInterface;
 use Sylius\Component\Resource\Factory\FactoryInterface;
+use Sylius\WishlistPlugin\Entity\WishlistInterface;
 use Sylius\WishlistPlugin\Repository\WishlistRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,6 +35,9 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class CartTransferController extends AbstractController
 {
+    /**
+     * @phpstan-param OrderRepositoryInterface<OrderInterface> $orderRepository
+     */
     public function __construct(
         private readonly WishlistRepositoryInterface $wishlistRepository,
         private readonly CartContextInterface $cartContext,
@@ -54,6 +61,9 @@ final class CartTransferController extends AbstractController
     )]
     public function moveToCart(Request $request, int $id): JsonResponse
     {
+        /**
+         * @var WishlistInterface|null $wishlist
+         */
         $wishlist = $this->wishlistRepository->find($id);
         if (null === $wishlist) {
             return $this->json(['error' => 'Wishlist not found'], Response::HTTP_NOT_FOUND);
@@ -71,7 +81,13 @@ final class CartTransferController extends AbstractController
         $dto = $request->attributes->get(ToolContractValidator::DTO_ATTRIBUTE);
 
         $variantCodes = $dto->variantCodes;
+        /**
+         * @var OrderInterface $cart
+         */
         $cart = $this->cartContext->getCart();
+        /**
+         * @var ChannelInterface|null $channel
+         */
         $channel = $cart->getChannel();
         $this->orderTokenAssigner->assignTokenValueIfNotSet($cart);
 
@@ -93,6 +109,9 @@ final class CartTransferController extends AbstractController
                 continue;
             }
             $quantity = $wp->getQuantity();
+            /**
+             * @var \Sylius\Component\Core\Model\OrderItemInterface $orderItem
+             */
             $orderItem = $this->orderItemFactory->createNew();
             $orderItem->setVariant($variant);
             $this->quantityModifier->modify($orderItem, $quantity);
@@ -105,8 +124,11 @@ final class CartTransferController extends AbstractController
         $response = $this->json(
             [
             'cartToken' => $cart->getTokenValue(),
-            'channelCode' => $channel->getCode(),
+            'channelCode' => $channel?->getCode() ?? '',
             'items' => array_map(
+                /**
+                 * @param OrderItemInterface $i
+                 */
                 fn ($i) => [
                 'variantCode' => $i->getVariant()?->getCode(),
                 'quantity' => $i->getQuantity(),
@@ -117,7 +139,7 @@ final class CartTransferController extends AbstractController
             ),
             'total' => $cart->getTotal(),
             'totalFormatted' => sprintf('$%.2f', $cart->getTotal() / 100),
-            'cartUrl' => sprintf('/%s/cart', $channel->getDefaultLocale()?->getCode() ?? 'en_US'),
+            'cartUrl' => sprintf('/%s/cart', $channel?->getDefaultLocale()?->getCode() ?? 'en_US'),
             ],
             Response::HTTP_CREATED,
         );

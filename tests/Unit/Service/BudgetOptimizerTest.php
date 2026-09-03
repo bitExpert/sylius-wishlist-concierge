@@ -22,11 +22,17 @@ class BudgetOptimizerTest extends TestCase
 {
     private BudgetOptimizer $optimizer;
 
-    private $channelMock;
+    private ChannelInterface $channelMock;
 
-    private $calculatorMock;
+    /**
+     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&ProductVariantPricesCalculatorInterface $calculatorMock
+     */
+    private ProductVariantPricesCalculatorInterface $calculatorMock;
 
-    private $promotionsProviderMock;
+    /**
+     * @phpstan-property \PHPUnit\Framework\MockObject\MockObject&EligiblePromotionsProvider $promotionsProviderMock
+     */
+    private EligiblePromotionsProvider $promotionsProviderMock;
 
     protected function setUp(): void
     {
@@ -86,7 +92,13 @@ class BudgetOptimizerTest extends TestCase
 
         $wp = $this->mockWishlistProduct('V1', 500, 600);
         // Configure calculator to return these prices
+        /**
+         * @phpstan-ignore-next-line
+         */
         $this->calculatorMock->method('calculateOriginal')->willReturn(600);
+        /**
+         * @phpstan-ignore-next-line
+         */
         $this->calculatorMock->method('calculate')->willReturn(500);
         $wishlist->method('getWishlistProducts')->willReturn(new \Doctrine\Common\Collections\ArrayCollection([$wp]));
 

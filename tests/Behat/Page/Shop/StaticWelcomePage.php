@@ -26,6 +26,8 @@ class StaticWelcomePage extends SymfonyPage implements WelcomePageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return array<string, string>
      */
     protected function getDefinedElements(): array
     {

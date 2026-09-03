@@ -31,7 +31,7 @@ final class ValidationErrorFormatter
         foreach ($violations as $violation) {
             $errors[] = [
                 'field' => $violation->getPropertyPath(),
-                'message' => $violation->getMessage(),
+                'message' => (string) $violation->getMessage(),
             ];
         }
 

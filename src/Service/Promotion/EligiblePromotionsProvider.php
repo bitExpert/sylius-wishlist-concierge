@@ -14,11 +14,14 @@ namespace BitExpert\SyliusWishlistConciergePlugin\Service\Promotion;
 
 use Sylius\Bundle\PromotionBundle\Provider\EligibleCatalogPromotionsProviderInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
-use Sylius\Component\Core\Model\ChannelInterface;
+use Sylius\Component\Channel\Model\ChannelInterface;
 use Sylius\Component\Promotion\Model\CatalogPromotionInterface;
 
 class EligiblePromotionsProvider
 {
+    /**
+     * @param EligibleCatalogPromotionsProviderInterface<CatalogPromotionInterface> $eligibleCatalogPromotionsProvider
+     */
     public function __construct(
         private EligibleCatalogPromotionsProviderInterface $eligibleCatalogPromotionsProvider,
         private ChannelContextInterface $channelContext,
@@ -71,8 +74,12 @@ class EligiblePromotionsProvider
 
     private static function appliesToChannel(CatalogPromotionInterface $promotion, ChannelInterface $channel): bool
     {
+        /**
+         * @var \Sylius\Component\Core\Model\CatalogPromotionInterface $corePromotion
+         */
+        $corePromotion = $promotion;
         $channelCode = $channel->getCode();
-        foreach ($promotion->getChannels() as $promotionChannel) {
+        foreach ($corePromotion->getChannels() as $promotionChannel) {
             if ($promotionChannel->getCode() === $channelCode) {
                 return true;
             }

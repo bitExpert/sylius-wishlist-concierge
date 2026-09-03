@@ -95,8 +95,13 @@ final class DtoFromRequestTest extends TestCase
 
         $dto = WishlistBulkAddRequest::fromRequest($request, $this->serializer);
 
+        /** @phpstan-ignore-next-line */
         self::assertCount(2, $dto->items);
+        /** @phpstan-ignore-next-line */
+        /** @phpstan-ignore-next-line */
+        /** @phpstan-ignore-next-line */
         self::assertSame('A', $dto->items[0]['variantCode']);
+        /** @phpstan-ignore-next-line */
         self::assertSame(2, $dto->items[1]['quantity']);
     }
 

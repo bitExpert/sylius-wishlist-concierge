@@ -120,7 +120,7 @@ final class ToolContractValidatorTest extends TestCase
         self::assertNotNull($response);
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
 
-        $payload = json_decode($response->getContent(), true);
+        $payload = json_decode((string) $response->getContent(), true);
         self::assertSame('Validation failed', $payload['error']);
         self::assertNotEmpty($payload['violations']);
         self::assertSame('name', $payload['violations'][0]['field']);

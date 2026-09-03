@@ -16,7 +16,8 @@ use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Channel\Repository\ChannelRepositoryInterface;
 use Sylius\Component\Core\Model\ChannelInterface;
 use Sylius\Component\Core\Model\ProductInterface;
-use Sylius\Component\Core\Repository\ProductRepositoryInterface;
+use Sylius\Component\Core\Model\ProductVariantInterface;
+use Sylius\Bundle\ProductBundle\Doctrine\ORM\ProductRepository;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final readonly class ThemedProductFinder
@@ -25,17 +26,23 @@ final readonly class ThemedProductFinder
 
     private const string TAGS_ATTRIBUTE_CODE = 'concierge_tags';
 
+    /**
+     * @phpstan-param ProductRepository<ProductInterface> $productRepository
+     * @phpstan-param ChannelRepositoryInterface<ChannelInterface> $channelRepository
+     */
     public function __construct(
-        private ProductRepositoryInterface $productRepository,
+        private ProductRepository $productRepository,
         private ChannelRepositoryInterface $channelRepository,
         private ChannelContextInterface $channelContext,
     ) {
     }
 
     /**
+     * @param string[]|null $taxonCodes
+     *
      * @return array<int, array{code:string, name:string, slug:string, price:int, originalPrice:int, taxonCodes:string[], image:string|null, variantCode:string}>
      */
-    public function find(?string $theme, ?string $channelCode, ?int $priceMin, ?int $priceMax, ?array $taxonCodes, int $limit = self::DEFAULT_LIMIT): array
+    public function find(?string $theme, ?string $channelCode, ?int $priceMin, ?int $priceMax, ?array $taxonCodes = null, int $limit = self::DEFAULT_LIMIT): array
     {
         $channel = $this->resolveChannel($channelCode);
         $localeCode = $channel->getDefaultLocale()?->getCode() ?? 'en_US';
@@ -52,7 +59,8 @@ final readonly class ThemedProductFinder
     }
 
     /**
-     * @return ProductInterface[]
+     * @param string[]|null $taxonCodes
+     * @return array<int, ProductInterface>
      */
     private function findEnabledProductsForChannel(ChannelInterface $channel, ?array $taxonCodes): array
     {
@@ -149,7 +157,7 @@ final readonly class ThemedProductFinder
         }
 
         // Soft match: name contains
-        $name = (string) $product->getTranslation($localeCode)?->getName();
+        $name = (string) $product->getTranslation($localeCode)->getName();
         if ('' !== $name && str_contains(strtolower($name), $lowerTheme)) {
             return true;
         }
@@ -166,10 +174,13 @@ final readonly class ThemedProductFinder
         if (false === $variant) {
             $variant = $product->getVariants()->first();
         }
-        if (false === $variant || null === $variant) {
+        if (false === $variant) {
             return null;
         }
 
+        /**
+         * @var ProductVariantInterface $variant
+         */
         $channelPricing = $variant->getChannelPricingForChannel($channel);
         if (null === $channelPricing) {
             return null;
@@ -180,8 +191,8 @@ final readonly class ThemedProductFinder
 
         return [
             'code' => (string) $product->getCode(),
-            'name' => (string) $product->getTranslation($localeCode)?->getName(),
-            'slug' => (string) $product->getTranslation($localeCode)?->getSlug(),
+            'name' => (string) $product->getTranslation($localeCode)->getName(),
+            'slug' => (string) $product->getTranslation($localeCode)->getSlug(),
             'price' => $price,
             'originalPrice' => $original,
             'taxonCodes' => $this->getTaxonCodes($product),
@@ -193,6 +204,9 @@ final readonly class ThemedProductFinder
     private function resolveChannel(?string $code): ChannelInterface
     {
         if (null !== $code) {
+            /**
+             * @var ChannelInterface|null $channel
+             */
             $channel = $this->channelRepository->findOneBy(['code' => $code]);
             if (null === $channel) {
                 throw new NotFoundHttpException(sprintf('Channel "%s" not found.', $code));
@@ -201,12 +215,17 @@ final readonly class ThemedProductFinder
             return $channel;
         }
 
-        return $this->channelContext->getChannel();
+        /** @var ChannelInterface $channel */
+        $channel = $this->channelContext->getChannel();
+
+        return $channel;
     }
 
     public function getDefaultChannelCode(): string
     {
-        return $this->channelContext->getChannel()->getCode();
+        $channel = $this->channelContext->getChannel();
+        /** @phpstan-ignore-next-line */
+        return $channel ? (string) $channel->getCode() : '';
     }
 
     /**
@@ -219,6 +238,9 @@ final readonly class ThemedProductFinder
         $channel = $this->resolveChannel($channelCode);
         $localeCode = $channel->getDefaultLocale()?->getCode() ?? 'en_US';
 
+        /**
+         * @var ProductInterface|null $product
+         */
         $product = $this->productRepository->findOneBy(['code' => $productCode, 'enabled' => true]);
 
         if (null === $product) {

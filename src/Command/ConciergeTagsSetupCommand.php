@@ -53,6 +53,11 @@ final class ConciergeTagsSetupCommand extends Command
         'Polarized_Sun_Cap' => ['summer'],
     ];
 
+    /**
+     * @phpstan-param ProductAttributeRepositoryInterface<\Sylius\Component\Product\Model\ProductAttributeInterface> $attributeRepository
+     * @phpstan-param ProductAttributeValueRepositoryInterface<\Sylius\Component\Product\Model\ProductAttributeValueInterface> $attributeValueRepository
+     * @phpstan-param ProductRepositoryInterface<\Sylius\Component\Core\Model\ProductInterface> $productRepository
+     */
     public function __construct(
         private ProductAttributeRepositoryInterface $attributeRepository,
         private ProductAttributeValueRepositoryInterface $attributeValueRepository,
@@ -85,9 +90,8 @@ final class ConciergeTagsSetupCommand extends Command
             $io->section("Creating attribute `{$this->attributeCode()}` (type: selection, multiple: true)");
             $attribute = new ProductAttribute();
             $attribute->setCode(self::ATTRIBUTE_CODE);
-            $attribute->setType('selection');
-            $attribute->setMultiple(true);
-            $attribute->setRequired(false);
+            $attribute->setType('select');
+            $attribute->setConfiguration(['multiple' => true]);
 
             if (!$dryRun) {
                 $this->entityManager->persist($attribute);
@@ -157,7 +161,7 @@ final class ConciergeTagsSetupCommand extends Command
             }
 
             $tags = self::PRODUCT_TAGS[$code];
-            $name = (string) $product->getTranslation(null)?->getName();
+            $name = (string) $product->getTranslation(null)->getName();
             $io->writeln(sprintf('  - %s (%s) => [%s]', $code, $name, implode(', ', $tags)));
 
             if ($dryRun) {

@@ -30,7 +30,9 @@ use Symfony\Component\Validator\Mapping\PropertyMetadataInterface;
  */
 final class ModelContextToolCollector
 {
-    /*     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>|null */
+    /**
+     * @var list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: array<string>}, method: \ReflectionMethod}>|null
+     */
     private ?array $cache = null;
 
     /**
@@ -52,9 +54,9 @@ final class ModelContextToolCollector
      *     description: string,
      *     inputSchema: array<string, mixed>,
      *     annotations: array<string, bool>,
-     *     route: array{path: string, name: string, methods: list<string>},
+     *     route: array{path: string, name: string, methods: array<string>},
      *     confirmMessage: string,
-     *     emitsEvents: list<string>,
+     *     emitsEvents: array<string>,
      *     skipBaseUrl: bool,
      *     pathParams: array<string, string>,
      *     queryParams: array<string, string>,
@@ -96,7 +98,7 @@ final class ModelContextToolCollector
     /**
      * Return a map of route-name => DTO class for all tools that use a DTO.
      *
-     * @return array<string, class-string>
+     * @return array<string, string>
      */
     public function routeDtoMap(): array
     {
@@ -129,7 +131,7 @@ final class ModelContextToolCollector
     }
 
     /**
-     * @return list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: list<string>}, method: \ReflectionMethod}>
+     * @return list<array{tool: ModelContextTool, route: array{path: string, name: string, methods: array<string>}, method: \ReflectionMethod}>
      */
     private function resolveAll(): array
     {
@@ -167,6 +169,10 @@ final class ModelContextToolCollector
         return $this->cache;
     }
 
+    /**
+     * @phpstan-param \ReflectionClass<object> $reflection
+     * @phpstan-return string
+     */
     private function resolveClassPrefix(\ReflectionClass $reflection): string
     {
         $attrs = $reflection->getAttributes(Route::class, \ReflectionAttribute::IS_INSTANCEOF);
@@ -180,11 +186,15 @@ final class ModelContextToolCollector
          */
         $route = $attrs[0]->newInstance();
 
-        return $route->path ?? '';
+        if (!is_string($route->path ?? null)) {
+            return '';
+        }
+
+        return $route->path;
     }
 
     /**
-     * @return array{path: string, name: string, methods: list<string>}|null
+     * @return array{path: string, name: string, methods: array<string>}|null
      */
     private function resolveRoute(\ReflectionMethod $method, string $classPrefix, ModelContextTool $tool): ?array
     {
@@ -220,7 +230,10 @@ final class ModelContextToolCollector
          */
         $route = $attrs[0]->newInstance();
 
-        $path = $classPrefix . ($route->path ?? '');
+        if (!is_string($route->path ?? null)) {
+            return null;
+        }
+        $path = $classPrefix . $route->path;
         $methods = $route->methods ?? [];
         $name = $route->name ?? $this->generateRouteName($method);
 
@@ -462,7 +475,8 @@ final class ModelContextToolCollector
     {
         $schema['type'] = 'array';
         $itemsType = null;
-        foreach ($constraint->constraints as $itemConstraint) {
+        $constraints = is_array($constraint->constraints) ? $constraint->constraints : [$constraint->constraints];
+        foreach ($constraints as $itemConstraint) {
             if ($itemConstraint instanceof Constraints\Type || $itemConstraint instanceof Constraints\Regex) {
                 $fake = [];
                 $this->applyTypeConstraint($fake, $itemConstraint);
@@ -479,7 +493,7 @@ final class ModelContextToolCollector
     {
         $type = match (true) {
             $constraint instanceof Constraints\Regex => 'string',
-            default => strtolower((string) $constraint->type),
+            default => is_string($constraint->type) ? strtolower($constraint->type) : 'string',
         };
 
         if ('boolean' === $type || 'bool' === $type) {

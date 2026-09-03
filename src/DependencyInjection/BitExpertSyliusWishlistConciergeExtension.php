@@ -48,6 +48,9 @@ final class BitExpertSyliusWishlistConciergeExtension extends AbstractResourceEx
         return '@BitExpertSyliusWishlistConciergePlugin/src/Migrations';
     }
 
+    /**
+     * @return string[]
+     */
     protected function getNamespacesOfMigrationsExecutedBefore(): array
     {
         return [

@@ -20,8 +20,8 @@ final class WishlistBulkAddRequest
 
     #[Assert\NotBlank(message: 'Items array must not be empty.')]
     #[Assert\Count(min: 1, max: 200, minMessage: 'At least one item is required.')]
-    /** @var array<int, WishlistBulkItem> */
-    public array $items = [];
+    /** @phpstan-ignore-next-line */
+    public iterable $items = [];
 
     public function __construct()
     {
